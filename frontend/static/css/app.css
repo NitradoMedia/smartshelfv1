@@ -460,6 +460,20 @@ body {
   display: block;
 }
 .preview-stage .meta { padding: 1rem; text-align: center; }
+.net-diag {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+  background: rgba(224, 160, 69, 0.12);
+  color: var(--ink);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+.net-diag.ok {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
+  background: rgba(61, 186, 139, 0.12);
+}
 @media (max-width: 900px) {
   .preview-grid { grid-template-columns: 1fr; }
 }

@@ -369,6 +369,7 @@ document.getElementById("btn-preview-start").addEventListener("click", async () 
     toast("Bitte RTSP-URL eintragen");
     return;
   }
+  refreshNetDiag().catch(() => {});
   const btn = document.getElementById("btn-preview-start");
   btn.disabled = true;
   document.getElementById("preview-rtsp-hint").textContent = "Verbinde…";
@@ -518,6 +519,7 @@ document.getElementById("btn-open-record").addEventListener("click", async () =>
   openModal("modal-record");
   try {
     await refreshRecordPanel();
+    await refreshNetDiag();
   } catch (err) {
     toast(err.message || "Aufnahmen laden fehlgeschlagen");
   }
@@ -528,6 +530,31 @@ document.getElementById("btn-open-record").addEventListener("click", async () =>
     }
   }, 1500);
 });
+
+async function refreshNetDiag() {
+  const box = document.getElementById("net-diag");
+  if (!box) return;
+  const url = document.getElementById("rec-url").value.trim() || "rtsp://admin:admin@192.168.1.32:554/11";
+  try {
+    const d = await api("/api/network/diagnose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const tcp = d.tcp ? (d.tcp.ok ? "OK" : `FEHLER – ${d.tcp.detail}`) : "–";
+    box.className = "net-diag" + (d.tcp && d.tcp.ok ? " ok" : "");
+    box.textContent =
+      `Server: ${(d.local_ips || []).join(", ") || d.hostname}` +
+      `${d.looks_like_cloud ? " (Cloud – kein Heimnetz)" : " (lokales Netz)"}\n` +
+      `Kamera ${d.rtsp_host || "?"}:${d.rtsp_port || 554} → ${tcp}\n\n` +
+      (d.recommendation || "");
+  } catch (err) {
+    box.className = "net-diag";
+    box.textContent = err.message || "Netz-Diagnose fehlgeschlagen";
+  }
+}
+
+document.getElementById("rec-url").addEventListener("change", () => refreshNetDiag());
 
 document.getElementById("rec-source").addEventListener("change", () => {
   const name = document.getElementById("rec-source").value;

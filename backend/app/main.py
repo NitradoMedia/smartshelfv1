@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import incidents, media, ops, preview, record
+from app.api import incidents, media, network, ops, preview, record
 from app.config import get_settings
 from app.database import init_db
 from app.services.rtsp_preview import previews
@@ -51,6 +51,7 @@ app.include_router(ops.router)
 app.include_router(media.router)
 app.include_router(record.router)
 app.include_router(preview.router)
+app.include_router(network.router)
 
 STATIC = Path(__file__).resolve().parent.parent.parent / "frontend" / "static"
 # In Docker the frontend is copied next to app
