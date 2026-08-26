@@ -73,7 +73,15 @@ Stoppen: `docker compose down`
 1. URL prüfen: **http://localhost:8090** (nicht 8088)  
 2. Diagnose: `scripts\docker-diagnose.bat` (zeigt Status + Logs)  
 3. Neu bauen: `docker compose down` → `scripts\start-docker.bat`  
-4. Branch: `cursor/pos-video-guard-6e31` (nicht nur ZIP von `main`)
+
+### Kamera Timeout trotz lokalem Docker?
+
+Server-IP oft `192.168.96.x` = **Docker-Bridge**, Kamera `192.168.1.x` = Heimnetz – Docker Desktop reicht RTSP oft nicht durch.
+
+1. Host-Test: `scripts\test-camera.bat`  
+2. **Empfohlen:** `docker compose down` → `scripts\run-local.bat` → http://localhost:8090  
+3. Oder Docker Host-Networking aktivieren, dann:  
+   `set DOCKER_HOST_NETWORK=1` → `scripts\start-docker.bat`
 
 ## Schnellstart (Docker)
 

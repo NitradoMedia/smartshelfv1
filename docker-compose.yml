@@ -40,11 +40,65 @@ services:
       - ./data/preview:/data/preview
       - ./data/models:/data/models
       - guard-db:/data/db
-    # Docker Desktop (Windows/Mac) erreicht normalerweise das LAN (192.168.x).
-    # Falls die Kamera trotzdem nicht erreichbar ist, ggf. Firewall freigeben.
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Eigenes Bridge-Netz (172.28.x), nicht 192.168.x – vermeidet Verwechslung mit Heimnetz
+    networks:
+      - guardnet
+
+  # Optional: Host-Netz (Docker Desktop: „Enable host networking“ nötig unter Windows)
+  # Start: set DOCKER_HOST_NETWORK=1 && scripts\start-docker.bat
+  pos-video-guard-host:
+    profiles: ["hostnet"]
+    build: .
+    image: pos-video-guard:latest
+    container_name: pos-video-guard
+    network_mode: host
+    # Host-Netz: Port direkt auf dem Host (8090), kein ports:-Mapping
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8090"]
+    environment:
+      DEMO_MODE: "${DEMO_MODE:-false}"
+      AI_BACKEND: "${AI_BACKEND:-yolo}"
+      YOLO_MODEL: "${YOLO_MODEL:-/data/models/yolov8n.pt}"
+      DATABASE_URL: "${DATABASE_URL:-sqlite+aiosqlite:////data/db/pos_video_guard.db}"
+      LOOKBACK_SECONDS: "${LOOKBACK_SECONDS:-5}"
+      CLIP_DURATION_SECONDS: "${CLIP_DURATION_SECONDS:-12}"
+      MISMATCH_TOLERANCE: "${MISMATCH_TOLERANCE:-0}"
+      SCAN_INTERVAL_SECONDS: "${SCAN_INTERVAL_SECONDS:-30}"
+      POS_TIMEZONE: "${POS_TIMEZONE:-Europe/Berlin}"
+      REOLINK_HOST: "${REOLINK_HOST:-}"
+      REOLINK_USER: "${REOLINK_USER:-admin}"
+      REOLINK_PASSWORD: "${REOLINK_PASSWORD:-}"
+      REOLINK_CHANNEL: "${REOLINK_CHANNEL:-0}"
+      REOLINK_RTSP_URL: "${REOLINK_RTSP_URL:-}"
+      REOLINK_HTTPS: "${REOLINK_HTTPS:-false}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      FTP_ENABLED: "${FTP_ENABLED:-false}"
+      FTP_HOST: "${FTP_HOST:-}"
+      FTP_PORT: "${FTP_PORT:-21}"
+      FTP_USER: "${FTP_USER:-}"
+      FTP_PASSWORD: "${FTP_PASSWORD:-}"
+      FTP_REMOTE_DIR: "${FTP_REMOTE_DIR:-/}"
+      FTP_PASSIVE: "${FTP_PASSIVE:-true}"
+    volumes:
+      - ./data/pos:/data/pos
+      - ./data/clips:/data/clips
+      - ./data/videos:/data/videos
+      - ./data/recordings:/data/recordings
+      - ./data/uploads:/data/uploads
+      - ./data/preview:/data/preview
+      - ./data/models:/data/models
+      - guard-db:/data/db
+    restart: unless-stopped
 
 volumes:
   guard-db:
+
+networks:
+  guardnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.90.0/24
