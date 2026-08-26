@@ -39,6 +39,7 @@ class RecordingJob:
     raw_path: Optional[Path] = None
     final_path: Optional[Path] = None
     bytes_written: int = 0
+    preview_id: Optional[str] = None
     process: Optional[subprocess.Popen] = field(default=None, repr=False)
     _timer: Optional[threading.Timer] = field(default=None, repr=False)
 
@@ -57,7 +58,7 @@ class RecordingJob:
             elapsed = max(0, int((end - self.started_at).total_seconds()))
         self.refresh_size()
         out_name = Path(self.output_path).name if self.output_path else None
-        return {
+        data = {
             "id": self.id,
             "name": self.name,
             "rtsp_url": _redact_url(self.rtsp_url),
@@ -75,6 +76,11 @@ class RecordingJob:
             ),
             "error": self.error,
         }
+        if getattr(self, "preview_id", None):
+            data["preview_id"] = self.preview_id
+            data["preview_frame_url"] = f"/api/preview/{self.preview_id}/frame.jpg"
+            data["preview_mjpeg_url"] = f"/api/preview/{self.preview_id}/mjpeg"
+        return data
 
 
 def _redact_url(url: str) -> str:
@@ -237,7 +243,26 @@ class RtspRecorder:
             timer.start()
 
         logger.info("RTSP recording started id=%s name=%s max=%s", job_id, safe_name, job.max_seconds)
+        # Kick off recording preview in background once data appears
+        threading.Thread(
+            target=self._attach_preview,
+            args=(job_id, raw_path, safe_name),
+            daemon=True,
+        ).start()
         return job
+
+    def _attach_preview(self, job_id: str, raw_path: Path, label: str) -> None:
+        try:
+            from app.services.rtsp_preview import previews
+
+            sess = previews.ensure_recording_preview(job_id, raw_path, label=label)
+            if sess:
+                with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job:
+                        job.preview_id = sess.id
+        except Exception:  # noqa: BLE001
+            logger.debug("Recording preview attach skipped", exc_info=True)
 
     def _watch(self, job_id: str) -> None:
         while True:
@@ -330,6 +355,14 @@ class RtspRecorder:
             logger.exception("Finalize recording failed id=%s", job_id)
 
         job.ended_at = datetime.now(timezone.utc)
+        # stop attached preview
+        if job.preview_id:
+            try:
+                from app.services.rtsp_preview import previews
+
+                previews.stop(job.preview_id)
+            except Exception:  # noqa: BLE001
+                pass
         logger.info(
             "RTSP recording stopped id=%s reason=%s status=%s bytes=%s",
             job_id,

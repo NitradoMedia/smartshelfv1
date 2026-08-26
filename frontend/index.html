@@ -164,6 +164,31 @@
       </header>
       <p class="modal-lead">RTSP-Stream eintragen und Aufnahme starten. Die App muss im <strong>gleichen Netzwerk</strong> wie die Kamera laufen (Cloud allein erreicht <code>192.168.x.x</code> nicht). Stoppen manuell oder nach Dauer. Fertige Dateien unter <code>data/recordings</code> — danach unter „Manuell abgleichen“ auswählbar.</p>
 
+      <div class="preview-grid">
+        <div class="preview-pane">
+          <div class="preview-head">
+            <strong>Stream-Vorschau</strong>
+            <div class="preview-actions">
+              <button type="button" class="btn ghost" id="btn-preview-start">Vorschau</button>
+              <button type="button" class="btn ghost" id="btn-preview-stop">Stop</button>
+            </div>
+          </div>
+          <div class="preview-stage" id="preview-rtsp-stage">
+            <img id="preview-rtsp-img" alt="RTSP Vorschau" class="hidden" />
+            <p class="meta" id="preview-rtsp-hint">URL eintragen und „Vorschau“ klicken.</p>
+          </div>
+        </div>
+        <div class="preview-pane">
+          <div class="preview-head">
+            <strong>Aufnahme-Vorschau</strong>
+          </div>
+          <div class="preview-stage" id="preview-rec-stage">
+            <img id="preview-rec-img" alt="Aufnahme Vorschau" class="hidden" />
+            <p class="meta" id="preview-rec-hint">Startet automatisch mit der Aufnahme.</p>
+          </div>
+        </div>
+      </div>
+
       <form id="form-record" class="form-grid two">
         <label class="field">
           <span>Name</span>

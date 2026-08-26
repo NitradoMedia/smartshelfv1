@@ -329,7 +329,76 @@ document.getElementById("btn-ftp-pull").addEventListener("click", async () => {
 
 /* ---- RTSP recording ---- */
 let recPoll = null;
+let previewPoll = null;
+let previewSessionId = null;
+let recPreviewSessionId = null;
 const rtspSources = { list: [] };
+
+function setPreviewImage(imgId, hintId, url) {
+  const img = document.getElementById(imgId);
+  const hint = document.getElementById(hintId);
+  if (!url) {
+    img.classList.add("hidden");
+    img.removeAttribute("src");
+    hint.classList.remove("hidden");
+    return;
+  }
+  hint.classList.add("hidden");
+  img.classList.remove("hidden");
+  img.src = `${url}?t=${Date.now()}`;
+}
+
+async function stopRtspPreview() {
+  if (previewPoll) {
+    clearInterval(previewPoll);
+    previewPoll = null;
+  }
+  if (previewSessionId) {
+    try {
+      await api(`/api/preview/${previewSessionId}/stop`, { method: "POST" });
+    } catch { /* ignore */ }
+    previewSessionId = null;
+  }
+  setPreviewImage("preview-rtsp-img", "preview-rtsp-hint", null);
+  document.getElementById("preview-rtsp-hint").textContent = "URL eintragen und „Vorschau“ klicken.";
+}
+
+document.getElementById("btn-preview-start").addEventListener("click", async () => {
+  const url = document.getElementById("rec-url").value.trim();
+  if (!url) {
+    toast("Bitte RTSP-URL eintragen");
+    return;
+  }
+  const btn = document.getElementById("btn-preview-start");
+  btn.disabled = true;
+  document.getElementById("preview-rtsp-hint").textContent = "Verbinde…";
+  try {
+    await stopRtspPreview();
+    const sess = await api("/api/preview/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, label: document.getElementById("rec-name").value.trim() || "Vorschau" }),
+    });
+    previewSessionId = sess.id;
+    setPreviewImage("preview-rtsp-img", "preview-rtsp-hint", sess.frame_url);
+    previewPoll = setInterval(() => {
+      if (previewSessionId) {
+        setPreviewImage("preview-rtsp-img", "preview-rtsp-hint", `/api/preview/${previewSessionId}/frame.jpg`);
+      }
+    }, 500);
+    toast("Vorschau aktiv");
+  } catch (err) {
+    document.getElementById("preview-rtsp-hint").textContent = err.message || "Vorschau fehlgeschlagen";
+    toast(err.message || "Vorschau fehlgeschlagen");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("btn-preview-stop").addEventListener("click", async () => {
+  await stopRtspPreview();
+  toast("Vorschau gestoppt");
+});
 
 async function refreshRecordPanel() {
   const data = await api("/api/recordings");
@@ -347,6 +416,26 @@ async function refreshRecordPanel() {
     j.status === "recording" || j.status === "stopping"
   );
   const failed = (data.active || []).filter((j) => j.status === "failed").slice(0, 3);
+
+  // recording preview
+  const liveRec = active.find((j) => j.preview_frame_url) || active[0];
+  if (liveRec && liveRec.preview_frame_url) {
+    recPreviewSessionId = liveRec.preview_id || recPreviewSessionId;
+    setPreviewImage("preview-rec-img", "preview-rec-hint", liveRec.preview_frame_url);
+  } else if (liveRec && liveRec.id) {
+    // try attach preview if missing
+    try {
+      const sess = await api(`/api/preview/recording/${liveRec.id}/start`, { method: "POST" });
+      recPreviewSessionId = sess.id;
+      setPreviewImage("preview-rec-img", "preview-rec-hint", sess.frame_url);
+    } catch {
+      document.getElementById("preview-rec-hint").textContent = "Warte auf erste Frames…";
+    }
+  } else if (!active.length) {
+    setPreviewImage("preview-rec-img", "preview-rec-hint", null);
+    document.getElementById("preview-rec-hint").textContent = "Startet automatisch mit der Aufnahme.";
+  }
+
   if (!active.length) {
     activeEl.innerHTML = `<p class="meta">Keine laufende Aufnahme.</p>` +
       (failed.length ? failed.map((j) => `
@@ -437,7 +526,7 @@ document.getElementById("btn-open-record").addEventListener("click", async () =>
     if (!document.getElementById("modal-record").classList.contains("hidden")) {
       refreshRecordPanel().catch(() => {});
     }
-  }, 2000);
+  }, 1500);
 });
 
 document.getElementById("rec-source").addEventListener("change", () => {
