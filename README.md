@@ -68,6 +68,13 @@ Unter **Aufnahme** sollte die Netz-Diagnose dann **lokales Netz** + Kamera **OK*
 
 Stoppen: `docker compose down`
 
+### Container „läuft“, Dashboard nicht?
+
+1. URL prüfen: **http://localhost:8090** (nicht 8088)  
+2. Diagnose: `scripts\docker-diagnose.bat` (zeigt Status + Logs)  
+3. Neu bauen: `docker compose down` → `scripts\start-docker.bat`  
+4. Branch: `cursor/pos-video-guard-6e31` (nicht nur ZIP von `main`)
+
 ## Schnellstart (Docker)
 
 ```bash
@@ -75,7 +82,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Dashboard: **http://localhost:8088**
+Dashboard: **http://localhost:8090**
 
 ### Lokal ohne Docker
 
