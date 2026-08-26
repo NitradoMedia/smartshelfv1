@@ -558,24 +558,36 @@ async function refreshNetDiag() {
 function updateLanBanner(d) {
   const banner = document.getElementById("lan-banner");
   if (!banner) return;
+  if (d && d.tcp && d.tcp.ok) {
+    banner.classList.add("hidden");
+    banner.textContent = "";
+    return;
+  }
+  if (d && d.needs_host_network) {
+    banner.classList.remove("hidden");
+    banner.innerHTML =
+      "<strong>Docker erreicht die Kamera nicht</strong> (Container-Netz ≠ Heimnetz).\n" +
+      "Sofort: <code>docker compose down</code> → <strong>scripts\\run-local.bat</strong> → " +
+      "<strong>http://localhost:8090</strong>\n" +
+      "Host-Test: scripts\\test-camera.bat";
+    return;
+  }
   if (d && d.needs_local_restart) {
     banner.classList.remove("hidden");
     banner.innerHTML =
       "<strong>Kamera nicht erreichbar – App läuft nicht in deinem Heimnetz.</strong>\n" +
-      "Cursor-Cloud-Tunnel ≠ lokaler PC. Auf dem Windows-PC:\n" +
-      "scripts\\start-docker.bat → dann <strong>http://localhost:8090</strong> öffnen " +
-      "(nicht 8088). Diagnose muss „Kamera → OK“ zeigen.";
-  } else if (d && d.tcp && d.tcp.ok) {
-    banner.classList.add("hidden");
-    banner.textContent = "";
-  } else if (d && d.looks_like_cloud) {
+      "Lokal: scripts\\start-docker.bat oder scripts\\run-local.bat → " +
+      "<strong>http://localhost:8090</strong> (nicht Cloud-Tunnel 8088).";
+    return;
+  }
+  if (d && d.looks_like_cloud) {
     banner.classList.remove("hidden");
     banner.innerHTML =
-      "<strong>Hinweis:</strong> Keine Heimnetz-IP erkannt. Für die Reolink lokal starten: " +
-      "<strong>http://localhost:8090</strong> nach scripts\\start-docker.bat";
-  } else {
-    banner.classList.add("hidden");
+      "<strong>Hinweis:</strong> Keine Heimnetz-IP erkannt. Lokal starten: " +
+      "<strong>http://localhost:8090</strong>";
+    return;
   }
+  banner.classList.add("hidden");
 }
 
 async function checkLanOnLoad() {
