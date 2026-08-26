@@ -1,0 +1,33 @@
+services:
+  pos-video-guard:
+    build: .
+    image: pos-video-guard:latest
+    container_name: pos-video-guard
+    ports:
+      - "8088:8000"
+    environment:
+      DEMO_MODE: "${DEMO_MODE:-true}"
+      AI_BACKEND: "${AI_BACKEND:-mock}"
+      LOOKBACK_SECONDS: "${LOOKBACK_SECONDS:-5}"
+      CLIP_DURATION_SECONDS: "${CLIP_DURATION_SECONDS:-12}"
+      MISMATCH_TOLERANCE: "${MISMATCH_TOLERANCE:-0}"
+      SCAN_INTERVAL_SECONDS: "${SCAN_INTERVAL_SECONDS:-30}"
+      POS_TIMEZONE: "${POS_TIMEZONE:-Europe/Berlin}"
+      REOLINK_HOST: "${REOLINK_HOST:-}"
+      REOLINK_USER: "${REOLINK_USER:-admin}"
+      REOLINK_PASSWORD: "${REOLINK_PASSWORD:-}"
+      REOLINK_CHANNEL: "${REOLINK_CHANNEL:-0}"
+      REOLINK_RTSP_URL: "${REOLINK_RTSP_URL:-}"
+      REOLINK_HTTPS: "${REOLINK_HTTPS:-false}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      YOLO_MODEL: "${YOLO_MODEL:-yolov8n.pt}"
+    volumes:
+      - guard-data:/data
+      - ./data/pos:/data/pos
+      # Optional: mount local recordings
+      # - ./recordings:/data/recordings:ro
+    restart: unless-stopped
+
+volumes:
+  guard-data:

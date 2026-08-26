@@ -1,0 +1,13 @@
+.git
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/clips/
+data/uploads/
+*.db
+.DS_Store
+recordings/
+.ultralytics/
+yolov8*.pt

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POS Video Guard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>POS Video Guard</h1>
+        <p class="tagline">Kassenbon × Kamera · Abweichungen prüfen</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="btn-scan" class="btn ghost" type="button">Jetzt abgleichen</button>
+      <label class="btn primary file-btn">
+        POS-Datei laden
+        <input id="pos-upload" type="file" accept=".csv,.json,.txt,.tsv" hidden />
+      </label>
+    </div>
+  </header>
+
+  <section class="stats" id="stats">
+    <article class="stat" data-key="open">
+      <span class="stat-label">Offen</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="theft">
+      <span class="stat-label">Diebstahl</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="false_alarm">
+      <span class="stat-label">Fehlalarm</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="total">
+      <span class="stat-label">Gesamt</span>
+      <strong class="stat-value">–</strong>
+    </article>
+  </section>
+
+  <nav class="filters" role="tablist">
+    <button class="filter active" data-status="">Alle</button>
+    <button class="filter" data-status="open">Offen</button>
+    <button class="filter" data-status="theft">Diebstahl</button>
+    <button class="filter" data-status="false_alarm">Fehlalarm</button>
+  </nav>
+
+  <main class="layout">
+    <section class="list-pane">
+      <div id="incident-list" class="incident-list"></div>
+      <p id="empty" class="empty hidden">Keine Vorfälle in diesem Filter.</p>
+    </section>
+    <section class="detail-pane" id="detail">
+      <div class="detail-placeholder">
+        <p>Vorfall wählen, um Videoausschnitt und Bon-Abgleich zu sehen.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
