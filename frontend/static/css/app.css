@@ -474,6 +474,18 @@ body {
   border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
   background: rgba(61, 186, 139, 0.12);
 }
+.lan-banner {
+  margin: 0 1.25rem 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--line));
+  background: rgba(224, 160, 69, 0.16);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.lan-banner strong { font-weight: 700; }
 @media (max-width: 900px) {
   .preview-grid { grid-template-columns: 1fr; }
 }

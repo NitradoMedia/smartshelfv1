@@ -92,7 +92,7 @@ pip install -r backend/requirements.txt
 ./scripts/run-local.sh
 ```
 
-Dann ebenfalls **http://localhost:8088** (bindet `0.0.0.0:8088`).
+Dann ebenfalls **http://localhost:8090** (oder Port aus `.env` / `HOST_PORT`).
 
 Demo-Modus ist standardmäßig aktiv (`DEMO_MODE=true`, `AI_BACKEND=mock`): ohne Kamera werden Platzhalter-Clips erzeugt und Demo-POS-Daten abgeglichen. Im UI **„Jetzt abgleichen“** klicken oder die Datei `data/pos/demo_transactions.csv` liegt bereits bereit.
 
