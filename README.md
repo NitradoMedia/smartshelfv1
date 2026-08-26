@@ -86,11 +86,11 @@ Die Kamera/NVR muss vom Docker-Host erreichbar sein (HTTP-API + ggf. RTSP Port 5
 
 | `AI_BACKEND` | Beschreibung |
 |--------------|--------------|
-| `mock` | Demo ohne Modell (deterministisch) |
-| `yolo` | lokales YOLOv8 (`ultralytics`), zählt konfigurierbare COCO-Klassen |
+| `yolo` (**Standard**) | lokales **YOLOv8n** (`ultralytics`) – zählt konfigurierbare COCO-Artikelklassen in Videoframes |
 | `openai` | GPT-Vision (`OPENAI_API_KEY`), oft besser für gemischte Waren |
+| `mock` | nur für Demos ohne Modell |
 
-Für Produktion empfiehlt sich `openai` oder ein fein-getuntes YOLO auf eure Artikel/Perspektive.
+Beim Start mit `yolo` wird `yolov8n.pt` einmalig geladen (Warmup). Weights liegen unter `data/models/`.
 
 ## Image ohne Compose
 

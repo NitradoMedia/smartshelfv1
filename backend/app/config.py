@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     ftp_remote_dir: str = "/"
     ftp_passive: bool = True
 
-    # AI backends: mock | yolo | openai
+    # AI backends: yolo | openai | mock
     ai_backend: str = "yolo"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"

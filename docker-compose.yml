@@ -7,7 +7,8 @@ services:
       - "8088:8000"
     environment:
       DEMO_MODE: "${DEMO_MODE:-true}"
-      AI_BACKEND: "${AI_BACKEND:-mock}"
+      AI_BACKEND: "${AI_BACKEND:-yolo}"
+      YOLO_MODEL: "${YOLO_MODEL:-yolov8n.pt}"
       LOOKBACK_SECONDS: "${LOOKBACK_SECONDS:-5}"
       CLIP_DURATION_SECONDS: "${CLIP_DURATION_SECONDS:-12}"
       MISMATCH_TOLERANCE: "${MISMATCH_TOLERANCE:-0}"

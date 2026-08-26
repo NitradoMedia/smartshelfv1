@@ -1,4 +1,4 @@
-.git
+.gitignore
 .env
 __pycache__/
 *.pyc
@@ -7,6 +7,7 @@ venv/
 data/clips/
 data/uploads/
 data/videos/
+data/models/
 **/runtime_settings.json
 *.db
 .DS_Store

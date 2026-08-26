@@ -40,8 +40,38 @@ class AiCounter:
         if self._yolo is None:
             from ultralytics import YOLO
 
-            self._yolo = YOLO(self.settings.yolo_model)
+            model_name = self.settings.yolo_model
+            model_path = Path(model_name)
+            if not model_path.is_file():
+                cached = self.settings.data_dir / "models" / Path(model_name).name
+                if cached.is_file():
+                    model_path = cached
+                else:
+                    cached.parent.mkdir(parents=True, exist_ok=True)
+                    # Ultralytics downloads by name into CWD; prefer data/models
+                    model_path = Path(model_name)
+            logger.info("Loading YOLO model: %s", model_path)
+            self._yolo = YOLO(str(model_path))
+            # Persist downloaded weights under data/models when possible
+            try:
+                src = Path(self._yolo.ckpt_path) if hasattr(self._yolo, "ckpt_path") else None
+                dest = self.settings.data_dir / "models" / Path(model_name).name
+                if src and src.is_file() and not dest.exists():
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(src.read_bytes())
+            except Exception:  # noqa: BLE001
+                logger.debug("Could not cache YOLO weights", exc_info=True)
         return self._yolo
+
+    def warmup(self) -> None:
+        if self.settings.ai_backend.lower() != "yolo":
+            return
+        model = self._load_yolo()
+        import numpy as np
+
+        blank = np.zeros((320, 320, 3), dtype=np.uint8)
+        model.predict(blank, conf=self.settings.yolo_confidence, verbose=False)
+        logger.info("YOLO warmup complete (%s)", self.settings.yolo_model)
 
     def _sample_frames(self, video_path: Path, max_frames: int = 8) -> list[np.ndarray]:
         cap = cv2.VideoCapture(str(video_path))

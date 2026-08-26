@@ -22,12 +22,20 @@ logger = logging.getLogger("pos_video_guard")
 async def lifespan(_: FastAPI):
     settings = get_settings()
     await init_db()
+    if settings.ai_backend.lower() == "yolo":
+        try:
+            from app.services.ai_counter import AiCounter
+
+            AiCounter(settings).warmup()
+        except Exception:  # noqa: BLE001
+            logger.exception("YOLO warmup failed – first request may download weights")
     start_scheduler()
     logger.info(
-        "Started %s (demo=%s, ai=%s)",
+        "Started %s (demo=%s, ai=%s, model=%s)",
         settings.app_name,
         settings.demo_mode,
         settings.ai_backend,
+        settings.yolo_model,
     )
     yield
     stop_scheduler()
