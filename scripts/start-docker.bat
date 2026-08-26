@@ -33,13 +33,16 @@ echo.
 echo Baue und starte POS Video Guard (Docker)...
 echo Dashboard: http://localhost:8090
 echo.
-echo Wenn die Kamera Timeout hat: lieber scripts\run-local.bat
-echo   oder: set DOCKER_HOST_NETWORK=1 ^(Host-Networking in Docker Desktop an^)
+echo Bei Netzwerk-Fehler "Pool overlaps": docker network prune -f
+echo Dann erneut starten. Kamera-Timeout: scripts\run-local.bat
 echo.
 
 REM Alten Container stoppen, damit Name/Ports frei sind
 docker compose --profile hostnet down >nul 2>&1
 docker compose down >nul 2>&1
+REM Altes festes Subnetz-Netz ggf. entfernen (früher guardnet)
+docker network rm kishelf_guardnet >nul 2>&1
+docker network rm smartshelfv1_guardnet >nul 2>&1
 
 if /I "%DOCKER_HOST_NETWORK%"=="1" (
   echo Modus: Host-Networking ^(Profil hostnet^)

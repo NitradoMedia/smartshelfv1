@@ -43,9 +43,6 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Eigenes Bridge-Netz (172.28.x), nicht 192.168.x – vermeidet Verwechslung mit Heimnetz
-    networks:
-      - guardnet
 
   # Optional: Host-Netz (Docker Desktop: „Enable host networking“ nötig unter Windows)
   # Start: set DOCKER_HOST_NETWORK=1 && scripts\start-docker.bat
@@ -95,10 +92,3 @@ services:
 
 volumes:
   guard-db:
-
-networks:
-  guardnet:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.90.0/24
