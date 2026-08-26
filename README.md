@@ -10,6 +10,17 @@ Abgleich von **Kassen-Transaktionen** mit **Reolink-Video** per KI. Bei Abweichu
 4. KI zählt sichtbare Artikel im Clip.
 5. Weicht die Zählung vom Bon ab → Eintrag im Dashboard mit Video.
 
+## Videoquellen
+
+1. **Manuell im Dashboard** → „Manuell abgleichen“: Excel/CSV + Video(s) hochladen  
+   - Dateiname mit Bon-ID (`B-1001.mp4`) oder Zeitstempel (`20260826_222205.mp4`)
+2. **FTP** → „FTP / Videoquelle“: Host, User, Passwort, Remote-Ordner speichern  
+   - „Vom FTP holen & abgleichen“ lädt passende Clips nach Zeitstempel
+3. **Reolink-API/RTSP** (wenn konfiguriert)
+4. Demo-Platzhalter
+
+Priorität bei `video_source=auto`: Upload-Ordner → FTP → Reolink → Demo.
+
 ## Schnellstart (Docker)
 
 ```bash

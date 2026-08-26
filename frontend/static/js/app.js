@@ -13,7 +13,7 @@ function toast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => toastEl.classList.remove("show"), 2800);
+  toast._t = setTimeout(() => toastEl.classList.remove("show"), 3200);
 }
 
 function statusLabel(s) {
@@ -33,9 +33,32 @@ function fmtTime(iso) {
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    let msg = await res.text();
+    try {
+      const j = JSON.parse(msg);
+      msg = j.detail || msg;
+    } catch { /* keep text */ }
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
   return res.json();
 }
+
+function openModal(id) {
+  document.getElementById(id).classList.remove("hidden");
+}
+function closeModal(id) {
+  document.getElementById(id).classList.add("hidden");
+}
+
+document.querySelectorAll("[data-close]").forEach((btn) => {
+  btn.addEventListener("click", () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll(".modal").forEach((modal) => {
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.classList.add("hidden");
+  });
+});
 
 async function loadStats() {
   const s = await api("/api/incidents/stats");
@@ -141,28 +164,135 @@ document.getElementById("btn-scan").addEventListener("click", async (e) => {
     toast(`Abgleich: ${r.ingested} neu, ${r.incidents_created} Abweichungen`);
     await Promise.all([loadStats(), loadIncidents()]);
   } catch (err) {
-    toast("Abgleich fehlgeschlagen");
-    console.error(err);
+    toast(err.message || "Abgleich fehlgeschlagen");
   } finally {
     btn.disabled = false;
   }
 });
 
-document.getElementById("pos-upload").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+/* ---- Manual reconcile ---- */
+document.getElementById("btn-open-manual").addEventListener("click", () => openModal("modal-manual"));
+
+document.getElementById("form-manual").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pos = document.getElementById("manual-pos").files?.[0];
+  const vids = document.getElementById("manual-videos").files;
+  if (!pos) {
+    toast("Bitte Excel/CSV wählen");
+    return;
+  }
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("pos_file", pos);
+  if (vids) {
+    for (const v of vids) fd.append("videos", v);
+  }
+  const btn = document.getElementById("btn-manual-submit");
+  btn.disabled = true;
   try {
-    const res = await fetch("/api/upload-pos", { method: "POST", body: fd });
+    const res = await fetch("/api/manual-reconcile", { method: "POST", body: fd });
     const data = await res.json();
-    toast(`Datei geladen: ${data.ingested} Transaktionen, ${data.incidents_created} Abweichungen`);
+    if (!res.ok) throw new Error(data.detail || "Upload fehlgeschlagen");
+    toast(
+      `Manuell: ${data.transactions_in_file} Bons, ${data.videos_staged?.length || 0} Videos → ${data.incidents_created} Abweichungen`
+    );
+    closeModal("modal-manual");
+    e.target.reset();
     await Promise.all([loadStats(), loadIncidents()]);
   } catch (err) {
-    toast("Upload fehlgeschlagen");
-    console.error(err);
+    toast(err.message || "Manueller Abgleich fehlgeschlagen");
   } finally {
-    e.target.value = "";
+    btn.disabled = false;
+  }
+});
+
+/* ---- FTP settings ---- */
+async function loadFtpForm() {
+  const s = await api("/api/settings");
+  const f = s.ftp || {};
+  document.getElementById("ftp-enabled").checked = !!f.enabled;
+  document.getElementById("ftp-host").value = f.host || "";
+  document.getElementById("ftp-port").value = f.port || 21;
+  document.getElementById("ftp-user").value = f.user || "";
+  document.getElementById("ftp-password").value = "";
+  document.getElementById("ftp-password").placeholder = f.password_set
+    ? "gesetzt – leer lassen zum Behalten"
+    : "Passwort";
+  document.getElementById("ftp-remote-dir").value = f.remote_dir || "/";
+  document.getElementById("ftp-window").value = f.match_window_seconds || 180;
+  document.getElementById("ftp-passive").checked = f.passive !== false;
+  document.getElementById("video-source").value = s.video_source || "auto";
+}
+
+document.getElementById("btn-open-ftp").addEventListener("click", async () => {
+  openModal("modal-ftp");
+  try {
+    await loadFtpForm();
+  } catch (err) {
+    toast(err.message || "Einstellungen laden fehlgeschlagen");
+  }
+});
+
+async function saveFtpFromForm() {
+  const body = {
+    video_source: document.getElementById("video-source").value,
+    ftp: {
+      enabled: document.getElementById("ftp-enabled").checked,
+      host: document.getElementById("ftp-host").value.trim(),
+      port: Number(document.getElementById("ftp-port").value) || 21,
+      user: document.getElementById("ftp-user").value.trim(),
+      password: document.getElementById("ftp-password").value,
+      remote_dir: document.getElementById("ftp-remote-dir").value.trim() || "/",
+      passive: document.getElementById("ftp-passive").checked,
+      match_window_seconds: Number(document.getElementById("ftp-window").value) || 180,
+    },
+  };
+  if (!body.ftp.password) delete body.ftp.password;
+  await api("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+document.getElementById("form-ftp").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await saveFtpFromForm();
+    toast("FTP / Videoquelle gespeichert");
+    await loadFtpForm();
+  } catch (err) {
+    toast(err.message || "Speichern fehlgeschlagen");
+  }
+});
+
+document.getElementById("btn-ftp-test").addEventListener("click", async () => {
+  const status = document.getElementById("ftp-status");
+  try {
+    await saveFtpFromForm();
+    const r = await api("/api/ftp/test", { method: "POST" });
+    status.classList.remove("hidden");
+    status.textContent = JSON.stringify(r, null, 2);
+    toast("FTP-Verbindung OK");
+  } catch (err) {
+    status.classList.remove("hidden");
+    status.textContent = String(err.message || err);
+    toast("FTP-Test fehlgeschlagen");
+  }
+});
+
+document.getElementById("btn-ftp-pull").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-ftp-pull");
+  btn.disabled = true;
+  try {
+    await saveFtpFromForm();
+    const r = await api("/api/ftp/pull-and-scan", { method: "POST" });
+    toast(`FTP-Abgleich: ${r.ingested} neu, ${r.incidents_created} Abweichungen`);
+    closeModal("modal-ftp");
+    await Promise.all([loadStats(), loadIncidents()]);
+  } catch (err) {
+    toast(err.message || "FTP-Abgleich fehlgeschlagen");
+  } finally {
+    btn.disabled = false;
   }
 });
 

@@ -6,6 +6,8 @@ __pycache__/
 venv/
 data/clips/
 data/uploads/
+data/videos/
+**/runtime_settings.json
 *.db
 .DS_Store
 recordings/

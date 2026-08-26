@@ -138,10 +138,32 @@ def parse_json(path: Path) -> list[PosTransaction]:
     return [row_to_transaction(row, path.name, i) for i, row in enumerate(rows, start=1)]
 
 
+def parse_excel(path: Path) -> list[PosTransaction]:
+    from openpyxl import load_workbook
+
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    rows_iter = ws.iter_rows(values_only=True)
+    try:
+        header = next(rows_iter)
+    except StopIteration:
+        return []
+    keys = [str(h).strip() if h is not None else f"col_{i}" for i, h in enumerate(header)]
+    out: list[PosTransaction] = []
+    for i, values in enumerate(rows_iter, start=1):
+        if values is None or not any(v is not None and str(v).strip() for v in values):
+            continue
+        row = {keys[j]: values[j] for j in range(min(len(keys), len(values)))}
+        out.append(row_to_transaction(row, path.name, i))
+    return out
+
+
 def parse_pos_file(path: Path) -> list[PosTransaction]:
     suffix = path.suffix.lower()
     if suffix == ".json":
         return parse_json(path)
+    if suffix in {".xlsx", ".xlsm", ".xltx", ".xltm"}:
+        return parse_excel(path)
     if suffix in {".csv", ".txt", ".tsv"}:
         return parse_csv(path)
     raise ValueError(f"Unsupported POS file type: {suffix}")

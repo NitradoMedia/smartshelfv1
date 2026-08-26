@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     reolink_rtsp_url: str = ""  # optional override
     reolink_https: bool = False
 
+    # FTP video source (can also be set via Dashboard → runtime_settings.json)
+    ftp_enabled: bool = False
+    ftp_host: str = ""
+    ftp_port: int = 21
+    ftp_user: str = ""
+    ftp_password: str = ""
+    ftp_remote_dir: str = "/"
+    ftp_passive: bool = True
+
     # AI backends: mock | yolo | openai
     ai_backend: str = "yolo"
     openai_api_key: str = ""
@@ -54,6 +63,11 @@ class Settings(BaseSettings):
     @property
     def uploads_dir(self) -> Path:
         return self.data_dir / "uploads"
+
+    @property
+    def videos_dir(self) -> Path:
+        """Drop-folder / manually uploaded videos awaiting matching."""
+        return self.data_dir / "videos"
 
 
 @lru_cache

@@ -20,11 +20,9 @@
       </div>
     </div>
     <div class="top-actions">
+      <button id="btn-open-manual" class="btn primary" type="button">Manuell abgleichen</button>
+      <button id="btn-open-ftp" class="btn ghost" type="button">FTP / Videoquelle</button>
       <button id="btn-scan" class="btn ghost" type="button">Jetzt abgleichen</button>
-      <label class="btn primary file-btn">
-        POS-Datei laden
-        <input id="pos-upload" type="file" accept=".csv,.json,.txt,.tsv" hidden />
-      </label>
     </div>
   </header>
 
@@ -65,6 +63,92 @@
       </div>
     </section>
   </main>
+
+  <!-- Manual reconcile modal -->
+  <div id="modal-manual" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+    <div class="modal-card">
+      <header class="modal-head">
+        <h2 id="manual-title">Manuell abgleichen</h2>
+        <button type="button" class="icon-close" data-close="modal-manual" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">Excel/CSV mit Bons und passende Video-Datei(en) hochladen. Dateinamen mit Bon-ID (z. B. <code>B-1001.mp4</code>) oder Zeitstempel werden automatisch zugeordnet.</p>
+      <form id="form-manual" class="form-grid">
+        <label class="field">
+          <span>Kassen-Export (Excel / CSV)</span>
+          <input id="manual-pos" type="file" accept=".xlsx,.xlsm,.csv,.txt,.tsv,.json" required />
+        </label>
+        <label class="field">
+          <span>Video(s)</span>
+          <input id="manual-videos" type="file" accept="video/*,.mp4,.mkv,.avi,.mov,.ts" multiple />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close="modal-manual">Abbrechen</button>
+          <button type="submit" class="btn primary" id="btn-manual-submit">Abgleichen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FTP / source modal -->
+  <div id="modal-ftp" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ftp-title">
+    <div class="modal-card wide">
+      <header class="modal-head">
+        <h2 id="ftp-title">FTP &amp; Videoquelle</h2>
+        <button type="button" class="icon-close" data-close="modal-ftp" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">Hier legst du fest, von welchem FTP die Kamera-Videos gezogen werden. Beim Abgleich sucht das System Dateien mit passendem Zeitstempel im Namen.</p>
+      <form id="form-ftp" class="form-grid two">
+        <label class="field check">
+          <input id="ftp-enabled" type="checkbox" />
+          <span>FTP aktiv</span>
+        </label>
+        <label class="field">
+          <span>Videoquelle</span>
+          <select id="video-source">
+            <option value="auto">Auto (Upload → FTP → Reolink → Demo)</option>
+            <option value="upload">Nur Upload / lokaler Ordner</option>
+            <option value="ftp">Nur FTP</option>
+            <option value="reolink">Nur Reolink</option>
+            <option value="demo">Demo</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>FTP-Host</span>
+          <input id="ftp-host" type="text" placeholder="z. B. 192.168.1.50" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Port</span>
+          <input id="ftp-port" type="number" value="21" min="1" max="65535" />
+        </label>
+        <label class="field">
+          <span>Benutzer</span>
+          <input id="ftp-user" type="text" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>Passwort</span>
+          <input id="ftp-password" type="password" placeholder="leer = unverändert" autocomplete="current-password" />
+        </label>
+        <label class="field">
+          <span>Remote-Ordner</span>
+          <input id="ftp-remote-dir" type="text" placeholder="/Record/" value="/" />
+        </label>
+        <label class="field">
+          <span>Zeitfenster (Sek.)</span>
+          <input id="ftp-window" type="number" value="180" min="10" max="3600" />
+        </label>
+        <label class="field check">
+          <input id="ftp-passive" type="checkbox" checked />
+          <span>Passiv-Modus</span>
+        </label>
+        <div class="modal-actions span-2">
+          <button type="button" class="btn ghost" id="btn-ftp-test">Verbindung testen</button>
+          <button type="button" class="btn ghost" id="btn-ftp-pull">Vom FTP holen &amp; abgleichen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div>
+      </form>
+      <pre id="ftp-status" class="ftp-status hidden"></pre>
+    </div>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/static/js/app.js"></script>

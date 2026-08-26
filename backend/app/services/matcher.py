@@ -15,8 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.models import Incident, IncidentStatus, ProcessedFile, Transaction
 from app.services.ai_counter import AiCounter
+from app.services.ftp_client import FtpVideoClient
 from app.services.pos_parser import PosTransaction, parse_pos_file
 from app.services.reolink_client import ReolinkClient
+from app.services.runtime_settings import get_ftp_config, load_runtime
+from app.services.video_match import find_local_video_for_tx, stage_clip
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +35,17 @@ class MatcherService:
         self.settings = settings
         self.reolink = ReolinkClient(settings)
         self.ai = AiCounter(settings)
+        self.settings.videos_dir.mkdir(parents=True, exist_ok=True)
+        self.settings.clips_dir.mkdir(parents=True, exist_ok=True)
+        self.settings.uploads_dir.mkdir(parents=True, exist_ok=True)
 
     async def ingest_pos_directory(self, db: AsyncSession) -> int:
         watch = self.settings.pos_watch_dir
         watch.mkdir(parents=True, exist_ok=True)
         files = sorted(watch.glob(self.settings.pos_file_glob))
-        # also json
         files += sorted(watch.glob("*.json"))
+        files += sorted(watch.glob("*.xlsx"))
+        files += sorted(watch.glob("*.xlsm"))
         added = 0
         for path in files:
             added += await self.ingest_file(db, path)
@@ -90,7 +97,7 @@ class MatcherService:
         logger.info("Ingested %s transactions from %s", added, path.name)
         return added
 
-    async def process_pending(self, db: AsyncSession, limit: int = 20) -> list[Incident]:
+    async def process_pending(self, db: AsyncSession, limit: int = 50) -> list[Incident]:
         result = await db.execute(
             select(Transaction)
             .where(Transaction.processed.is_(False))
@@ -110,32 +117,79 @@ class MatcherService:
             await db.commit()
         return created
 
-    async def _process_one(self, db: AsyncSession, tx: Transaction) -> Incident | None:
-        clip_name = f"{tx.external_id}_{int(tx.timestamp.timestamp())}.mp4"
-        clip_path = self.settings.clips_dir / clip_name
-        thumb_path = clip_path.with_suffix(".jpg")
+    async def _resolve_clip(self, tx: Transaction, clip_path: Path) -> str:
+        """Obtain a video clip for the transaction. Returns source label."""
+        runtime = load_runtime()
+        source_pref = str(runtime.get("video_source") or "auto")
+        window = int(runtime.get("ftp", {}).get("match_window_seconds") or 180)
 
-        if self.settings.demo_mode or not self.reolink.configured:
-            await self._ensure_demo_clip(clip_path, tx)
-        else:
+        # Local / uploaded videos folder (manual drop)
+        if source_pref in {"auto", "upload"}:
+            local = find_local_video_for_tx(
+                self.settings.videos_dir,
+                tx.external_id,
+                tx.timestamp.replace(tzinfo=None) if tx.timestamp.tzinfo else tx.timestamp,
+                lookback_seconds=self.settings.lookback_seconds,
+                window_seconds=window,
+            )
+            if local:
+                stage_clip(local, clip_path)
+                return f"upload:{local.name}"
+
+        # FTP
+        if source_pref in {"auto", "ftp"}:
+            ftp_cfg = get_ftp_config()
+            if ftp_cfg.configured:
+                client = FtpVideoClient(ftp_cfg)
+                try:
+                    got = client.download_for_timestamp(
+                        center=tx.timestamp.replace(tzinfo=None)
+                        if tx.timestamp.tzinfo
+                        else tx.timestamp,
+                        dest=clip_path,
+                        lookback_seconds=self.settings.lookback_seconds,
+                        window_seconds=window,
+                    )
+                    if got:
+                        return f"ftp:{got.name}"
+                except Exception:  # noqa: BLE001
+                    logger.exception("FTP download failed for %s", tx.external_id)
+
+        # Reolink
+        if source_pref in {"auto", "reolink"} and self.reolink.configured and not self.settings.demo_mode:
             await self.reolink.extract_clip(
                 center=tx.timestamp,
                 lookback=self.settings.lookback_seconds,
                 duration=self.settings.clip_duration_seconds,
                 dest=clip_path,
             )
+            return "reolink"
 
+        # Demo / placeholder
+        await self._ensure_demo_clip(clip_path, tx)
+        return "demo"
+
+    async def _process_one(self, db: AsyncSession, tx: Transaction) -> Incident | None:
+        safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in tx.external_id)
+        clip_name = f"{safe_id}_{int(tx.timestamp.timestamp())}.mp4"
+        clip_path = self.settings.clips_dir / clip_name
+        thumb_path = clip_path.with_suffix(".jpg")
+
+        source = await self._resolve_clip(tx, clip_path)
         count = self.ai.count(clip_path)
         self.ai.make_thumbnail(clip_path, thumb_path)
 
+        details = dict(count.details) if isinstance(count.details, dict) else {"raw": count.details}
+        details["video_source"] = source
+
         diff = count.article_count - tx.article_count
         if abs(diff) <= self.settings.mismatch_tolerance:
-            # optional: store matched audits — skip for noise reduction
             logger.info(
-                "OK %s: receipt=%s ai=%s",
+                "OK %s: receipt=%s ai=%s source=%s",
                 tx.external_id,
                 tx.article_count,
                 count.article_count,
+                source,
             )
             return None
 
@@ -150,29 +204,30 @@ class MatcherService:
             clip_path=str(clip_path),
             thumbnail_path=str(thumb_path) if thumb_path.exists() else None,
             ai_backend=count.backend,
-            ai_details=json.dumps(count.details, ensure_ascii=False),
+            ai_details=json.dumps(details, ensure_ascii=False),
         )
         db.add(incident)
         await db.commit()
         await db.refresh(incident)
         logger.warning(
-            "MISMATCH %s: receipt=%s ai=%s diff=%s",
+            "MISMATCH %s: receipt=%s ai=%s diff=%s source=%s",
             tx.external_id,
             tx.article_count,
             count.article_count,
             diff,
+            source,
         )
         return incident
 
     async def _ensure_demo_clip(self, clip_path: Path, tx: Transaction) -> None:
-        """Create a synthetic clip or copy demo asset when no camera is available."""
         if clip_path.exists():
             return
         demo_src = Path("/app/demo/sample_checkout.mp4")
+        if not demo_src.exists():
+            demo_src = Path(__file__).resolve().parents[3] / "demo" / "sample_checkout.mp4"
         if demo_src.exists():
             shutil.copy(demo_src, clip_path)
             return
-        # Generate a short placeholder video with OpenCV
         import cv2
         import numpy as np
 
@@ -182,7 +237,6 @@ class MatcherService:
         for i in range(40):
             frame = np.zeros((360, 640, 3), dtype=np.uint8)
             frame[:] = (28, 36, 42)
-            # Draw fake "articles" proportional to receipt count (so mock/yolo demos vary)
             for n in range(max(tx.article_count, 1)):
                 x = 80 + (n % 5) * 100
                 y = 100 + (n // 5) * 80
@@ -204,10 +258,52 @@ class MatcherService:
             writer.write(frame)
         writer.release()
 
+    async def manual_batch(
+        self,
+        db: AsyncSession,
+        pos_path: Path,
+        video_paths: list[Path],
+    ) -> dict:
+        """Ingest Excel/CSV and pair with uploaded videos, then process."""
+        staged: list[str] = []
+        for vp in video_paths:
+            dest = self.settings.videos_dir / vp.name
+            stage_clip(vp, dest)
+            staged.append(dest.name)
+
+        pos_dest = self.settings.pos_watch_dir / pos_path.name
+        stage_clip(pos_path, pos_dest)
+
+        txs = parse_pos_file(pos_dest)
+
+        # 1 video + 1 Bon → rename/copy to bon-id for reliable pairing
+        if len(video_paths) == 1 and len(txs) == 1:
+            dest = self.settings.videos_dir / f"{txs[0].external_id}{video_paths[0].suffix}"
+            stage_clip(video_paths[0], dest)
+            staged = [dest.name]
+
+        ingested = await self.ingest_file(db, pos_dest)
+        if video_paths:
+            for tx in txs:
+                row = await db.scalar(
+                    select(Transaction).where(Transaction.external_id == tx.external_id)
+                )
+                if row:
+                    row.processed = False
+            await db.commit()
+
+        incidents = await self.process_pending(db, limit=max(50, len(txs) + 5))
+        return {
+            "ingested": ingested,
+            "videos_staged": staged,
+            "transactions_in_file": len(txs),
+            "incidents_created": len(incidents),
+            "incident_ids": [i.id for i in incidents],
+        }
+
     async def reprocess_with_upload(
         self, db: AsyncSession, tx: PosTransaction, video_path: Path
     ) -> Incident | None:
-        """Manual path: user uploads POS row + matching video clip."""
         exists = await db.scalar(
             select(Transaction).where(Transaction.external_id == tx.external_id)
         )
@@ -246,7 +342,10 @@ class MatcherService:
             clip_path=str(dest),
             thumbnail_path=str(thumb) if thumb.exists() else None,
             ai_backend=count.backend,
-            ai_details=json.dumps(count.details, ensure_ascii=False),
+            ai_details=json.dumps(
+                {**(count.details if isinstance(count.details, dict) else {}), "video_source": "manual"},
+                ensure_ascii=False,
+            ),
         )
         db.add(incident)
         await db.commit()
