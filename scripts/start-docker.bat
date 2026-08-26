@@ -24,7 +24,8 @@ if not exist data\models mkdir data\models
 
 echo.
 echo Baue und starte POS Video Guard (Docker)...
-echo Dashboard danach: http://localhost:8088
+echo Dashboard danach: http://localhost:8090
+echo (Port 8090 = lokal; 8088 oft Cursor-Cloud-Tunnel)
 echo.
 
 docker compose up --build -d
@@ -36,9 +37,9 @@ if errorlevel 1 (
 )
 
 echo.
-echo Fertig. Oeffne http://localhost:8088
+echo Fertig. Oeffne http://localhost:8090
 echo Logs: docker compose logs -f
 echo Stop:  docker compose down
 echo.
-start http://localhost:8088
+start http://localhost:8090
 pause

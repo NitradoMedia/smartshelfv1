@@ -18,6 +18,7 @@ echo "Baue und starte POS Video Guard…"
 docker compose up --build -d
 
 echo
-echo "Fertig → http://localhost:8088"
+echo "Fertig → http://localhost:8090"
+echo "(Port 8090 = lokal; 8088 ist oft der Cursor-Cloud-Tunnel)"
 echo "Logs: docker compose logs -f"
 echo "Stop: docker compose down"

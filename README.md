@@ -51,7 +51,8 @@ git checkout cursor/pos-video-guard-6e31
 git pull
 .\scripts\start-docker.bat
 ```
-4. Browser: **http://localhost:8088**
+4. Browser: **http://localhost:8090**  
+   (nicht 8088 – das ist oft der Cursor-Cloud-Tunnel)
 
 ### Linux / macOS
 ```bash
