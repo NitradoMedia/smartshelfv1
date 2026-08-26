@@ -18,7 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install -r /app/backend/requirements.txt
+RUN pip install -r /app/backend/requirements.txt \
+    && python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" \
+    && mkdir -p /data/models \
+    && cp yolov8n.pt /data/models/yolov8n.pt
 
 COPY backend /app/backend
 COPY frontend /app/frontend
