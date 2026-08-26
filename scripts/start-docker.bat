@@ -32,10 +32,21 @@ if not exist data\models mkdir data\models
 echo.
 echo Baue und starte POS Video Guard (Docker)...
 echo Dashboard: http://localhost:8090
-echo WICHTIG: Port 8090 = lokal. 8088 ist oft Cursor-Cloud, nicht dein PC.
+echo.
+echo Wenn die Kamera Timeout hat: lieber scripts\run-local.bat
+echo   oder: set DOCKER_HOST_NETWORK=1 ^(Host-Networking in Docker Desktop an^)
 echo.
 
-docker compose up --build -d
+REM Alten Container stoppen, damit Name/Ports frei sind
+docker compose --profile hostnet down >nul 2>&1
+docker compose down >nul 2>&1
+
+if /I "%DOCKER_HOST_NETWORK%"=="1" (
+  echo Modus: Host-Networking ^(Profil hostnet^)
+  docker compose --profile hostnet up --build -d pos-video-guard-host
+) else (
+  docker compose up --build -d pos-video-guard
+)
 if errorlevel 1 (
   echo.
   echo Start fehlgeschlagen.
@@ -51,21 +62,20 @@ set /a tries=0
 set /a tries+=1
 curl -fsS http://127.0.0.1:8090/api/health >nul 2>&1
 if not errorlevel 1 goto healthy
-docker compose ps --status running | findstr /I pos-video-guard >nul 2>&1
+docker compose ps --status running 2>nul | findstr /I pos-video-guard >nul 2>&1
 if errorlevel 1 (
   echo.
   echo Container ist gestoppt/abgestürzt. Letzte Logs:
   docker compose logs --tail 100
+  echo.
+  echo Tipp: scripts\run-local.bat ^(ohne Docker, Windows-Netz^)
   pause
   exit /b 1
 )
 if %tries% GEQ 30 (
   echo.
   echo Timeout: App antwortet nicht auf http://localhost:8090
-  echo Status:
   docker compose ps
-  echo.
-  echo Logs:
   docker compose logs --tail 100
   pause
   exit /b 1
@@ -75,10 +85,9 @@ goto wait_health
 
 :healthy
 echo.
-echo OK – Dashboard erreichbar: http://localhost:8090
-echo Logs: docker compose logs -f
-echo Stop:  docker compose down
-echo Diagnose: scripts\docker-diagnose.bat
+echo OK – Dashboard: http://localhost:8090
+echo Kamera-Test vom Host: scripts\test-camera.bat
+echo Bei Kamera-Timeout im Container: scripts\run-local.bat
 echo.
 start http://localhost:8090
 pause
