@@ -10,6 +10,16 @@ Abgleich von **Kassen-Transaktionen** mit **Reolink-Video** per KI. Bei Abweichu
 4. KI zählt sichtbare Artikel im Clip.
 5. Weicht die Zählung vom Bon ab → Eintrag im Dashboard mit Video.
 
+## RTSP-Aufnahme
+
+Im Dashboard **Aufnahme**:
+1. RTSP-URL eintragen (z. B. `rtsp://admin:pass@192.168.1.120:554/h264Preview_01_main`)
+2. Optional Max-Dauer in Sekunden
+3. **Aufnahme starten** / **Stoppen**
+4. Dateien unter `data/recordings/` (und optional `data/videos/` für den Abgleich)
+
+Quellen werden gespeichert und können später wiedergewählt werden.
+
 ## Videoquellen
 
 1. **Manuell im Dashboard** → „Manuell abgleichen“: Excel/CSV + Video(s) hochladen  

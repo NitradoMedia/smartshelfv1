@@ -20,7 +20,8 @@
       </div>
     </div>
     <div class="top-actions">
-      <button id="btn-open-manual" class="btn primary" type="button">Manuell abgleichen</button>
+      <button id="btn-open-record" class="btn primary" type="button">Aufnahme</button>
+      <button id="btn-open-manual" class="btn ghost" type="button">Manuell abgleichen</button>
       <button id="btn-open-ftp" class="btn ghost" type="button">FTP / Videoquelle</button>
       <button id="btn-scan" class="btn ghost" type="button">Jetzt abgleichen</button>
     </div>
@@ -147,6 +148,52 @@
         </div>
       </form>
       <pre id="ftp-status" class="ftp-status hidden"></pre>
+    </div>
+  </div>
+
+  <!-- RTSP record modal -->
+  <div id="modal-record" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="record-title">
+    <div class="modal-card wide">
+      <header class="modal-head">
+        <h2 id="record-title">RTSP-Aufnahme</h2>
+        <button type="button" class="icon-close" data-close="modal-record" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">RTSP-Stream eintragen und Aufnahme starten. Stoppen manuell oder nach festgelegter Dauer. Fertige Dateien landen unter <code>data/recordings</code> und stehen für den Abgleich bereit.</p>
+
+      <form id="form-record" class="form-grid two">
+        <label class="field">
+          <span>Name</span>
+          <input id="rec-name" type="text" placeholder="Kasse-1" value="Kasse-1" required />
+        </label>
+        <label class="field">
+          <span>Gespeicherte Quelle</span>
+          <select id="rec-source">
+            <option value="">— neue URL —</option>
+          </select>
+        </label>
+        <label class="field span-2">
+          <span>RTSP-URL</span>
+          <input id="rec-url" type="text" placeholder="rtsp://user:pass@192.168.1.120:554/h264Preview_01_main" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Max. Dauer (Sek., leer = bis Stop)</span>
+          <input id="rec-max" type="number" min="5" max="86400" placeholder="z. B. 300" />
+        </label>
+        <label class="field check">
+          <input id="rec-copy-videos" type="checkbox" checked />
+          <span>Auch in Video-Ordner für Abgleich kopieren</span>
+        </label>
+        <div class="modal-actions span-2">
+          <button type="button" class="btn ghost" data-close="modal-record">Schließen</button>
+          <button type="submit" class="btn danger" id="btn-rec-start">Aufnahme starten</button>
+        </div>
+      </form>
+
+      <h3 class="section-label">Aktive Aufnahmen</h3>
+      <div id="rec-active" class="rec-list"></div>
+
+      <h3 class="section-label">Gespeicherte Dateien</h3>
+      <div id="rec-files" class="rec-list"></div>
     </div>
   </div>
 

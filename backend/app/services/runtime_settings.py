@@ -1,4 +1,4 @@
-"""Persist runtime settings (FTP etc.) to JSON under DATA_DIR."""
+"""Persist runtime settings (FTP, RTSP sources, etc.) to JSON under DATA_DIR."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ _DEFAULTS: dict[str, Any] = {
         "match_window_seconds": 180,
     },
     "video_source": "auto",  # auto | upload | ftp | reolink | demo
+    "rtsp_sources": [],  # [{name, url}, ...]
 }
 
 
@@ -42,9 +43,10 @@ def load_runtime() -> dict[str, Any]:
                     data["ftp"].update(stored["ftp"])
                 if "video_source" in stored:
                     data["video_source"] = stored["video_source"]
+                if "rtsp_sources" in stored and isinstance(stored["rtsp_sources"], list):
+                    data["rtsp_sources"] = stored["rtsp_sources"]
         except Exception:  # noqa: BLE001
             pass
-    # Env overrides as bootstrap defaults when file empty
     settings = get_settings()
     ftp = data["ftp"]
     if not ftp.get("host") and settings.ftp_host:
@@ -62,13 +64,14 @@ def save_runtime(patch: dict[str, Any]) -> dict[str, Any]:
     with _lock:
         current = load_runtime()
         if "ftp" in patch and isinstance(patch["ftp"], dict):
-            # keep password if blank submitted
             incoming = dict(patch["ftp"])
             if incoming.get("password") in (None, ""):
                 incoming.pop("password", None)
             current["ftp"].update(incoming)
         if "video_source" in patch:
             current["video_source"] = patch["video_source"]
+        if "rtsp_sources" in patch and isinstance(patch["rtsp_sources"], list):
+            current["rtsp_sources"] = patch["rtsp_sources"]
         path = _path()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -97,4 +100,10 @@ def public_settings() -> dict[str, Any]:
         ftp["password"] = ""
     else:
         ftp["password_set"] = False
-    return {"ftp": ftp, "video_source": data.get("video_source", "auto")}
+    # redact passwords in RTSP URLs for UI display of stored list — keep full URL
+    # in API for editing; UI uses separate sources endpoint
+    return {
+        "ftp": ftp,
+        "video_source": data.get("video_source", "auto"),
+        "rtsp_sources": data.get("rtsp_sources") or [],
+    }

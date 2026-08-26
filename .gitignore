@@ -6,7 +6,7 @@ __pycache__/
 venv/
 data/clips/
 data/uploads/
-data/videos/
+data/recordings/
 data/models/
 **/runtime_settings.json
 *.db

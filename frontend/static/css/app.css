@@ -373,3 +373,34 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+.section-label {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.rec-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.rec-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  background: rgba(0,0,0,0.18);
+  flex-wrap: wrap;
+}
+.rec-item .meta { color: var(--muted); font-size: 0.85rem; }
+.rec-item .rec-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.rec-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger);
+  display: inline-block;
+  margin-right: 0.4rem;
+  animation: pulse-mark 1.2s ease-in-out infinite;
+}
+.rec-dot.off { background: var(--ok); animation: none; }

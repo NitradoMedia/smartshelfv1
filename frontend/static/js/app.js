@@ -299,6 +299,136 @@ document.getElementById("btn-ftp-pull").addEventListener("click", async () => {
   }
 });
 
+/* ---- RTSP recording ---- */
+let recPoll = null;
+const rtspSources = { list: [] };
+
+async function refreshRecordPanel() {
+  const data = await api("/api/recordings");
+  const src = await api("/api/rtsp/sources");
+  rtspSources.list = src.sources || [];
+
+  const sel = document.getElementById("rec-source");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">— neue URL —</option>` +
+    rtspSources.list.map((s) => `<option value="${s.name}">${s.name}</option>`).join("");
+  if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+
+  const activeEl = document.getElementById("rec-active");
+  const active = (data.active || []).filter((j) => j.status === "recording" || j.status === "stopping");
+  if (!active.length) {
+    activeEl.innerHTML = `<p class="meta">Keine laufende Aufnahme.</p>`;
+  } else {
+    activeEl.innerHTML = active.map((j) => `
+      <div class="rec-item">
+        <div>
+          <span class="rec-dot"></span><strong>${j.name}</strong>
+          <div class="meta">${j.elapsed_seconds ?? 0}s${j.max_seconds ? ` / max ${j.max_seconds}s` : ""} · ${j.rtsp_url}</div>
+        </div>
+        <div class="rec-actions">
+          <button type="button" class="btn danger" data-stop="${j.id}">Stoppen</button>
+        </div>
+      </div>`).join("");
+    activeEl.querySelectorAll("[data-stop]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          await api(`/api/recordings/${btn.dataset.stop}/stop`, { method: "POST" });
+          toast("Aufnahme gestoppt");
+          await refreshRecordPanel();
+        } catch (err) {
+          toast(err.message || "Stop fehlgeschlagen");
+        }
+      });
+    });
+  }
+
+  const filesEl = document.getElementById("rec-files");
+  const files = data.files || [];
+  if (!files.length) {
+    filesEl.innerHTML = `<p class="meta">Noch keine Dateien.</p>`;
+  } else {
+    filesEl.innerHTML = files.slice(0, 12).map((f) => `
+      <div class="rec-item">
+        <div>
+          <span class="rec-dot off"></span><strong>${f.name}</strong>
+          <div class="meta">${(f.size / 1024 / 1024).toFixed(2)} MB</div>
+        </div>
+        <div class="rec-actions">
+          <a class="btn ghost" href="${f.url}" target="_blank" rel="noopener">Öffnen</a>
+          <button type="button" class="btn ghost" data-del="${f.name}">Löschen</button>
+        </div>
+      </div>`).join("");
+    filesEl.querySelectorAll("[data-del]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm(`Datei ${btn.dataset.del} löschen?`)) return;
+        try {
+          await api(`/api/recordings/file/${encodeURIComponent(btn.dataset.del)}`, { method: "DELETE" });
+          toast("Datei gelöscht");
+          await refreshRecordPanel();
+        } catch (err) {
+          toast(err.message || "Löschen fehlgeschlagen");
+        }
+      });
+    });
+  }
+}
+
+document.getElementById("btn-open-record").addEventListener("click", async () => {
+  openModal("modal-record");
+  try {
+    await refreshRecordPanel();
+  } catch (err) {
+    toast(err.message || "Aufnahmen laden fehlgeschlagen");
+  }
+  clearInterval(recPoll);
+  recPoll = setInterval(() => {
+    if (!document.getElementById("modal-record").classList.contains("hidden")) {
+      refreshRecordPanel().catch(() => {});
+    }
+  }, 2000);
+});
+
+document.getElementById("rec-source").addEventListener("change", () => {
+  const name = document.getElementById("rec-source").value;
+  const found = rtspSources.list.find((s) => s.name === name);
+  if (found) {
+    document.getElementById("rec-name").value = found.name;
+    document.getElementById("rec-url").value = found.url;
+  }
+});
+
+document.getElementById("form-record").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-rec-start");
+  const maxVal = document.getElementById("rec-max").value;
+  const body = {
+    name: document.getElementById("rec-name").value.trim() || "kamera",
+    url: document.getElementById("rec-url").value.trim(),
+    max_seconds: maxVal ? Number(maxVal) : null,
+    copy_to_videos: document.getElementById("rec-copy-videos").checked,
+    save_source: true,
+  };
+  if (!body.url) {
+    toast("Bitte RTSP-URL eintragen");
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const job = await api("/api/recordings/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    toast(`Aufnahme gestartet (${job.id})`);
+    await refreshRecordPanel();
+  } catch (err) {
+    toast(err.message || "Start fehlgeschlagen");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 Promise.all([loadStats(), loadIncidents()]).catch(console.error);
 setInterval(() => {
   loadStats();

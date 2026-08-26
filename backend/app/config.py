@@ -69,6 +69,11 @@ class Settings(BaseSettings):
         """Drop-folder / manually uploaded videos awaiting matching."""
         return self.data_dir / "videos"
 
+    @property
+    def recordings_dir(self) -> Path:
+        """RTSP recordings from the dashboard recorder."""
+        return self.data_dir / "recordings"
+
 
 @lru_cache
 def get_settings() -> Settings:

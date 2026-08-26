@@ -6,9 +6,10 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import incidents, media, ops
+from app.api import incidents, media, ops, record
 from app.config import get_settings
 from app.database import init_db
+from app.services.rtsp_recorder import recorder
 from app.worker import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -38,6 +39,7 @@ async def lifespan(_: FastAPI):
         settings.yolo_model,
     )
     yield
+    recorder.stop_all()
     stop_scheduler()
 
 
@@ -45,6 +47,7 @@ app = FastAPI(title="POS Video Guard", lifespan=lifespan)
 app.include_router(incidents.router)
 app.include_router(ops.router)
 app.include_router(media.router)
+app.include_router(record.router)
 
 STATIC = Path(__file__).resolve().parent.parent.parent / "frontend" / "static"
 # In Docker the frontend is copied next to app
