@@ -14,3 +14,4 @@ data/models/
 recordings/
 .ultralytics/
 yolov8*.pt
+data/videos/
