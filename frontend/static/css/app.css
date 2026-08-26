@@ -404,3 +404,21 @@ body {
   animation: pulse-mark 1.2s ease-in-out infinite;
 }
 .rec-dot.off { background: var(--ok); animation: none; }
+.library-pick {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.45rem;
+  background: rgba(0,0,0,0.2);
+}
+.library-pick .pick {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.4rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+.library-pick .pick input { accent-color: var(--accent); }
+.err-text { color: var(--danger); font-size: 0.85rem; margin-top: 0.25rem; }

@@ -72,16 +72,20 @@
         <h2 id="manual-title">Manuell abgleichen</h2>
         <button type="button" class="icon-close" data-close="modal-manual" aria-label="Schließen">×</button>
       </header>
-      <p class="modal-lead">Excel/CSV mit Bons und passende Video-Datei(en) hochladen. Dateinamen mit Bon-ID (z. B. <code>B-1001.mp4</code>) oder Zeitstempel werden automatisch zugeordnet.</p>
+      <p class="modal-lead">Excel/CSV mit Bons und passende Video-Datei(en) hochladen <em>oder</em> gespeicherte Aufnahmen auswählen. Dateinamen mit Bon-ID (z. B. <code>B-1001.mp4</code>) oder Zeitstempel werden automatisch zugeordnet.</p>
       <form id="form-manual" class="form-grid">
         <label class="field">
           <span>Kassen-Export (Excel / CSV)</span>
           <input id="manual-pos" type="file" accept=".xlsx,.xlsm,.csv,.txt,.tsv,.json" required />
         </label>
         <label class="field">
-          <span>Video(s)</span>
+          <span>Video(s) neu hochladen (optional)</span>
           <input id="manual-videos" type="file" accept="video/*,.mp4,.mkv,.avi,.mov,.ts" multiple />
         </label>
+        <div class="field">
+          <span>Gespeicherte Aufnahmen / Videos</span>
+          <div id="manual-library" class="rec-list library-pick"></div>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn ghost" data-close="modal-manual">Abbrechen</button>
           <button type="submit" class="btn primary" id="btn-manual-submit">Abgleichen</button>
@@ -158,7 +162,7 @@
         <h2 id="record-title">RTSP-Aufnahme</h2>
         <button type="button" class="icon-close" data-close="modal-record" aria-label="Schließen">×</button>
       </header>
-      <p class="modal-lead">RTSP-Stream eintragen und Aufnahme starten. Stoppen manuell oder nach festgelegter Dauer. Fertige Dateien landen unter <code>data/recordings</code> und stehen für den Abgleich bereit.</p>
+      <p class="modal-lead">RTSP-Stream eintragen und Aufnahme starten. Die App muss im <strong>gleichen Netzwerk</strong> wie die Kamera laufen (Cloud allein erreicht <code>192.168.x.x</code> nicht). Stoppen manuell oder nach Dauer. Fertige Dateien unter <code>data/recordings</code> — danach unter „Manuell abgleichen“ auswählbar.</p>
 
       <form id="form-record" class="form-grid two">
         <label class="field">

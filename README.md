@@ -12,13 +12,18 @@ Abgleich von **Kassen-Transaktionen** mit **Reolink-Video** per KI. Bei Abweichu
 
 ## RTSP-Aufnahme
 
-Im Dashboard **Aufnahme**:
-1. RTSP-URL eintragen (z. B. `rtsp://admin:pass@192.168.1.120:554/h264Preview_01_main`)
-2. Optional Max-Dauer in Sekunden
-3. **Aufnahme starten** / **Stoppen**
-4. Dateien unter `data/recordings/` (und optional `data/videos/` für den Abgleich)
+**Wichtig:** Die Kamera (`192.168.x.x`) muss von dem Rechner erreichbar sein, auf dem die App läuft. Cloud-Agent + Port-Forward reicht für RTSP **nicht** – bitte lokal starten:
 
-Quellen werden gespeichert und können später wiedergewählt werden.
+```bash
+./scripts/run-local.sh
+# oder: docker compose up --build -d
+```
+
+Im Dashboard **Aufnahme**:
+1. RTSP-URL eintragen
+2. Optional Max-Dauer
+3. Start / Stop
+4. Fertige Datei unter **Manuell abgleichen** anhaken → mit Excel an KI schicken
 
 ## Videoquellen
 

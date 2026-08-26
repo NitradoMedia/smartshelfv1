@@ -174,14 +174,41 @@ document.getElementById("btn-scan").addEventListener("click", async (e) => {
 });
 
 /* ---- Manual reconcile ---- */
-document.getElementById("btn-open-manual").addEventListener("click", () => openModal("modal-manual"));
+async function loadManualLibrary() {
+  const box = document.getElementById("manual-library");
+  try {
+    const data = await api("/api/videos");
+    const vids = data.videos || [];
+    if (!vids.length) {
+      box.innerHTML = `<p class="meta">Noch keine gespeicherten Aufnahmen. Zuerst unter „Aufnahme“ aufzeichnen oder Videos hochladen.</p>`;
+      return;
+    }
+    box.innerHTML = vids.map((v) => `
+      <label class="pick">
+        <input type="checkbox" name="selected_videos" value="${v.id}" />
+        <span><strong>${v.name}</strong> <span class="meta">(${v.source}, ${(v.size/1024/1024).toFixed(2)} MB)</span></span>
+      </label>`).join("");
+  } catch (err) {
+    box.innerHTML = `<p class="err-text">${err.message || "Bibliothek laden fehlgeschlagen"}</p>`;
+  }
+}
+
+document.getElementById("btn-open-manual").addEventListener("click", async () => {
+  openModal("modal-manual");
+  await loadManualLibrary();
+});
 
 document.getElementById("form-manual").addEventListener("submit", async (e) => {
   e.preventDefault();
   const pos = document.getElementById("manual-pos").files?.[0];
   const vids = document.getElementById("manual-videos").files;
+  const selected = [...document.querySelectorAll('#manual-library input[name="selected_videos"]:checked')].map((el) => el.value);
   if (!pos) {
     toast("Bitte Excel/CSV wählen");
+    return;
+  }
+  if ((!vids || !vids.length) && !selected.length) {
+    toast("Bitte Video hochladen oder Aufnahme auswählen");
     return;
   }
   const fd = new FormData();
@@ -189,6 +216,7 @@ document.getElementById("form-manual").addEventListener("submit", async (e) => {
   if (vids) {
     for (const v of vids) fd.append("videos", v);
   }
+  for (const ref of selected) fd.append("selected_videos", ref);
   const btn = document.getElementById("btn-manual-submit");
   btn.disabled = true;
   try {
@@ -315,15 +343,26 @@ async function refreshRecordPanel() {
   if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
 
   const activeEl = document.getElementById("rec-active");
-  const active = (data.active || []).filter((j) => j.status === "recording" || j.status === "stopping");
+  const active = (data.active || []).filter((j) =>
+    j.status === "recording" || j.status === "stopping"
+  );
+  const failed = (data.active || []).filter((j) => j.status === "failed").slice(0, 3);
   if (!active.length) {
-    activeEl.innerHTML = `<p class="meta">Keine laufende Aufnahme.</p>`;
+    activeEl.innerHTML = `<p class="meta">Keine laufende Aufnahme.</p>` +
+      (failed.length ? failed.map((j) => `
+        <div class="rec-item">
+          <div>
+            <strong>${j.name}</strong> <span class="badge open">fehlgeschlagen</span>
+            <div class="err-text">${j.error || "unbekannt"}</div>
+          </div>
+        </div>`).join("") : "");
   } else {
     activeEl.innerHTML = active.map((j) => `
       <div class="rec-item">
         <div>
           <span class="rec-dot"></span><strong>${j.name}</strong>
-          <div class="meta">${j.elapsed_seconds ?? 0}s${j.max_seconds ? ` / max ${j.max_seconds}s` : ""} · ${j.rtsp_url}</div>
+          <div class="meta">${j.elapsed_seconds ?? 0}s${j.max_seconds ? ` / max ${j.max_seconds}s` : ""} · ${(j.bytes_written/1024).toFixed(0)} KB · ${j.rtsp_url}</div>
+          ${j.error ? `<div class="err-text">${j.error}</div>` : ""}
         </div>
         <div class="rec-actions">
           <button type="button" class="btn danger" data-stop="${j.id}">Stoppen</button>
@@ -348,7 +387,7 @@ async function refreshRecordPanel() {
   if (!files.length) {
     filesEl.innerHTML = `<p class="meta">Noch keine Dateien.</p>`;
   } else {
-    filesEl.innerHTML = files.slice(0, 12).map((f) => `
+    filesEl.innerHTML = files.slice(0, 20).map((f) => `
       <div class="rec-item">
         <div>
           <span class="rec-dot off"></span><strong>${f.name}</strong>
@@ -356,9 +395,21 @@ async function refreshRecordPanel() {
         </div>
         <div class="rec-actions">
           <a class="btn ghost" href="${f.url}" target="_blank" rel="noopener">Öffnen</a>
+          <button type="button" class="btn primary" data-use="${f.source}:${f.name}">Für Analyse</button>
           <button type="button" class="btn ghost" data-del="${f.name}">Löschen</button>
         </div>
       </div>`).join("");
+    filesEl.querySelectorAll("[data-use]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        closeModal("modal-record");
+        openModal("modal-manual");
+        await loadManualLibrary();
+        const ref = btn.dataset.use;
+        const box = document.querySelector(`#manual-library input[value="${ref.replace(/"/g, '\\"')}"]`);
+        if (box) box.checked = true;
+        toast("Aufnahme ausgewählt – Excel wählen und abgleichen");
+      });
+    });
     filesEl.querySelectorAll("[data-del]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         if (!confirm(`Datei ${btn.dataset.del} löschen?`)) return;
