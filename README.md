@@ -19,6 +19,16 @@ docker compose up --build -d
 
 Dashboard: **http://localhost:8088**
 
+### Lokal ohne Docker
+
+```bash
+cp .env.example .env
+pip install -r backend/requirements.txt
+./scripts/run-local.sh
+```
+
+Dann ebenfalls **http://localhost:8088** (bindet `0.0.0.0:8088`).
+
 Demo-Modus ist standardmäßig aktiv (`DEMO_MODE=true`, `AI_BACKEND=mock`): ohne Kamera werden Platzhalter-Clips erzeugt und Demo-POS-Daten abgeglichen. Im UI **„Jetzt abgleichen“** klicken oder die Datei `data/pos/demo_transactions.csv` liegt bereits bereit.
 
 ## POS-Dateiformat
