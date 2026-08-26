@@ -20,6 +20,7 @@ from app.services.pos_parser import PosTransaction, parse_pos_file
 from app.services.reolink_client import ReolinkClient
 from app.services.runtime_settings import get_ftp_config, load_runtime
 from app.services.video_match import find_local_video_for_tx, stage_clip
+from app.services.video_encode import to_browser_mp4
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,10 @@ class MatcherService:
         thumb_path = clip_path.with_suffix(".jpg")
 
         source = await self._resolve_clip(tx, clip_path)
+        try:
+            to_browser_mp4(clip_path)
+        except Exception:  # noqa: BLE001
+            logger.exception("Browser transcode failed for %s", clip_path)
         count = self.ai.count(clip_path)
         self.ai.make_thumbnail(clip_path, thumb_path)
 
@@ -227,13 +232,19 @@ class MatcherService:
             demo_src = Path(__file__).resolve().parents[3] / "demo" / "sample_checkout.mp4"
         if demo_src.exists():
             shutil.copy(demo_src, clip_path)
+            to_browser_mp4(clip_path)
             return
         import cv2
         import numpy as np
+        import subprocess
+        import tempfile
 
         clip_path.parent.mkdir(parents=True, exist_ok=True)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(clip_path), fourcc, 10.0, (640, 360))
+        # Write raw frames via OpenCV then ffmpeg → H.264 for browsers
+        with tempfile.NamedTemporaryFile(suffix=".avi", delete=False) as tmp:
+            raw = Path(tmp.name)
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        writer = cv2.VideoWriter(str(raw), fourcc, 10.0, (640, 360))
         for i in range(40):
             frame = np.zeros((360, 640, 3), dtype=np.uint8)
             frame[:] = (28, 36, 42)
@@ -257,7 +268,29 @@ class MatcherService:
             )
             writer.write(frame)
         writer.release()
-
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(raw),
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-profile:v",
+                    "baseline",
+                    "-movflags",
+                    "+faststart",
+                    "-an",
+                    str(clip_path),
+                ],
+                check=True,
+                capture_output=True,
+            )
+        finally:
+            raw.unlink(missing_ok=True)
     async def manual_batch(
         self,
         db: AsyncSession,
@@ -325,6 +358,7 @@ class MatcherService:
 
         dest = self.settings.clips_dir / f"upload_{tx.external_id}.mp4"
         shutil.copy(video_path, dest)
+        to_browser_mp4(dest)
         count = self.ai.count(dest)
         thumb = dest.with_suffix(".jpg")
         self.ai.make_thumbnail(dest, thumb)

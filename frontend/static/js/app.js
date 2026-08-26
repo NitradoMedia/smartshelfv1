@@ -114,7 +114,10 @@ function renderDetail(inc) {
   detailEl.innerHTML = `
     <div class="detail-body">
       <div class="video-wrap">
-        ${inc.clip_url ? `<video src="${inc.clip_url}" controls autoplay muted playsinline></video>` : `<div class="detail-placeholder"><p>Kein Videoausschnitt</p></div>`}
+        ${inc.clip_url ? `<video controls autoplay muted playsinline preload="metadata">
+          <source src="${inc.clip_url}" type="video/mp4" />
+          Video nicht abspielbar.
+        </video>` : `<div class="detail-placeholder"><p>Kein Videoausschnitt</p></div>`}
       </div>
       <div class="detail-info">
         <h2>Bon ${inc.external_id}</h2>
