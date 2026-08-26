@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POS Video Guard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>POS Video Guard</h1>
+        <p class="tagline">Kassenbon × Kamera · Abweichungen prüfen</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="btn-open-record" class="btn primary" type="button">Aufnahme</button>
+      <button id="btn-open-manual" class="btn ghost" type="button">Manuell abgleichen</button>
+      <button id="btn-open-ftp" class="btn ghost" type="button">FTP / Videoquelle</button>
+      <button id="btn-scan" class="btn ghost" type="button">Jetzt abgleichen</button>
+    </div>
+  </header>
+
+  <section class="stats" id="stats">
+    <article class="stat" data-key="open">
+      <span class="stat-label">Offen</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="theft">
+      <span class="stat-label">Diebstahl</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="false_alarm">
+      <span class="stat-label">Fehlalarm</span>
+      <strong class="stat-value">–</strong>
+    </article>
+    <article class="stat" data-key="total">
+      <span class="stat-label">Gesamt</span>
+      <strong class="stat-value">–</strong>
+    </article>
+  </section>
+
+  <nav class="filters" role="tablist">
+    <button class="filter active" data-status="">Alle</button>
+    <button class="filter" data-status="open">Offen</button>
+    <button class="filter" data-status="theft">Diebstahl</button>
+    <button class="filter" data-status="false_alarm">Fehlalarm</button>
+  </nav>
+
+  <main class="layout">
+    <section class="list-pane">
+      <div id="incident-list" class="incident-list"></div>
+      <p id="empty" class="empty hidden">Keine Vorfälle in diesem Filter.</p>
+    </section>
+    <section class="detail-pane" id="detail">
+      <div class="detail-placeholder">
+        <p>Vorfall wählen, um Videoausschnitt und Bon-Abgleich zu sehen.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Manual reconcile modal -->
+  <div id="modal-manual" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+    <div class="modal-card">
+      <header class="modal-head">
+        <h2 id="manual-title">Manuell abgleichen</h2>
+        <button type="button" class="icon-close" data-close="modal-manual" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">Excel/CSV mit Bons und passende Video-Datei(en) hochladen. Dateinamen mit Bon-ID (z. B. <code>B-1001.mp4</code>) oder Zeitstempel werden automatisch zugeordnet.</p>
+      <form id="form-manual" class="form-grid">
+        <label class="field">
+          <span>Kassen-Export (Excel / CSV)</span>
+          <input id="manual-pos" type="file" accept=".xlsx,.xlsm,.csv,.txt,.tsv,.json" required />
+        </label>
+        <label class="field">
+          <span>Video(s)</span>
+          <input id="manual-videos" type="file" accept="video/*,.mp4,.mkv,.avi,.mov,.ts" multiple />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close="modal-manual">Abbrechen</button>
+          <button type="submit" class="btn primary" id="btn-manual-submit">Abgleichen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FTP / source modal -->
+  <div id="modal-ftp" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ftp-title">
+    <div class="modal-card wide">
+      <header class="modal-head">
+        <h2 id="ftp-title">FTP &amp; Videoquelle</h2>
+        <button type="button" class="icon-close" data-close="modal-ftp" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">Hier legst du fest, von welchem FTP die Kamera-Videos gezogen werden. Beim Abgleich sucht das System Dateien mit passendem Zeitstempel im Namen.</p>
+      <form id="form-ftp" class="form-grid two">
+        <label class="field check">
+          <input id="ftp-enabled" type="checkbox" />
+          <span>FTP aktiv</span>
+        </label>
+        <label class="field">
+          <span>Videoquelle</span>
+          <select id="video-source">
+            <option value="auto">Auto (Upload → FTP → Reolink → Demo)</option>
+            <option value="upload">Nur Upload / lokaler Ordner</option>
+            <option value="ftp">Nur FTP</option>
+            <option value="reolink">Nur Reolink</option>
+            <option value="demo">Demo</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>FTP-Host</span>
+          <input id="ftp-host" type="text" placeholder="z. B. 192.168.1.50" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Port</span>
+          <input id="ftp-port" type="number" value="21" min="1" max="65535" />
+        </label>
+        <label class="field">
+          <span>Benutzer</span>
+          <input id="ftp-user" type="text" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>Passwort</span>
+          <input id="ftp-password" type="password" placeholder="leer = unverändert" autocomplete="current-password" />
+        </label>
+        <label class="field">
+          <span>Remote-Ordner</span>
+          <input id="ftp-remote-dir" type="text" placeholder="/Record/" value="/" />
+        </label>
+        <label class="field">
+          <span>Zeitfenster (Sek.)</span>
+          <input id="ftp-window" type="number" value="180" min="10" max="3600" />
+        </label>
+        <label class="field check">
+          <input id="ftp-passive" type="checkbox" checked />
+          <span>Passiv-Modus</span>
+        </label>
+        <div class="modal-actions span-2">
+          <button type="button" class="btn ghost" id="btn-ftp-test">Verbindung testen</button>
+          <button type="button" class="btn ghost" id="btn-ftp-pull">Vom FTP holen &amp; abgleichen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div>
+      </form>
+      <pre id="ftp-status" class="ftp-status hidden"></pre>
+    </div>
+  </div>
+
+  <!-- RTSP record modal -->
+  <div id="modal-record" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="record-title">
+    <div class="modal-card wide">
+      <header class="modal-head">
+        <h2 id="record-title">RTSP-Aufnahme</h2>
+        <button type="button" class="icon-close" data-close="modal-record" aria-label="Schließen">×</button>
+      </header>
+      <p class="modal-lead">RTSP-Stream eintragen und Aufnahme starten. Stoppen manuell oder nach festgelegter Dauer. Fertige Dateien landen unter <code>data/recordings</code> und stehen für den Abgleich bereit.</p>
+
+      <form id="form-record" class="form-grid two">
+        <label class="field">
+          <span>Name</span>
+          <input id="rec-name" type="text" placeholder="Kasse-1" value="Kasse-1" required />
+        </label>
+        <label class="field">
+          <span>Gespeicherte Quelle</span>
+          <select id="rec-source">
+            <option value="">— neue URL —</option>
+          </select>
+        </label>
+        <label class="field span-2">
+          <span>RTSP-URL</span>
+          <input id="rec-url" type="text" placeholder="rtsp://user:pass@192.168.1.120:554/h264Preview_01_main" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Max. Dauer (Sek., leer = bis Stop)</span>
+          <input id="rec-max" type="number" min="5" max="86400" placeholder="z. B. 300" />
+        </label>
+        <label class="field check">
+          <input id="rec-copy-videos" type="checkbox" checked />
+          <span>Auch in Video-Ordner für Abgleich kopieren</span>
+        </label>
+        <div class="modal-actions span-2">
+          <button type="button" class="btn ghost" data-close="modal-record">Schließen</button>
+          <button type="submit" class="btn danger" id="btn-rec-start">Aufnahme starten</button>
+        </div>
+      </form>
+
+      <h3 class="section-label">Aktive Aufnahmen</h3>
+      <div id="rec-active" class="rec-list"></div>
+
+      <h3 class="section-label">Gespeicherte Dateien</h3>
+      <div id="rec-files" class="rec-list"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+bon_id;zeit;anzahl_artikel;betrag;kassierer;kasse
+B-1001;26.08.2026 22:22:05;5;42,90;Anna;Kasse-1
+B-1002;26.08.2026 22:25:18;3;18,50;Anna;Kasse-1
+B-1003;26.08.2026 22:31:44;8;67,20;Tom;Kasse-1
+B-1004;26.08.2026 22:40:02;2;9,99;Tom;Kasse-1
+B-1005;26.08.2026 22:47:11;6;31,40;Anna;Kasse-1

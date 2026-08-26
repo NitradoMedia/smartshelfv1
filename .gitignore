@@ -1,0 +1,17 @@
+.gitignore
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/clips/
+data/uploads/
+data/recordings/
+data/models/
+**/runtime_settings.json
+*.db
+.DS_Store
+recordings/
+.ultralytics/
+yolov8*.pt
+data/videos/
