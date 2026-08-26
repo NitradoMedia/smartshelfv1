@@ -4,11 +4,13 @@ services:
     image: pos-video-guard:latest
     container_name: pos-video-guard
     ports:
-      - "8088:8000"
+      # Lokal bewusst 8090 – damit Cursor-Cloud-Tunnel auf 8088 nicht kollidiert
+      - "${HOST_PORT:-8090}:8000"
     environment:
-      DEMO_MODE: "${DEMO_MODE:-true}"
+      DEMO_MODE: "${DEMO_MODE:-false}"
       AI_BACKEND: "${AI_BACKEND:-yolo}"
-      YOLO_MODEL: "${YOLO_MODEL:-yolov8n.pt}"
+      YOLO_MODEL: "${YOLO_MODEL:-/data/models/yolov8n.pt}"
+      DATABASE_URL: "${DATABASE_URL:-sqlite+aiosqlite:////data/db/pos_video_guard.db}"
       LOOKBACK_SECONDS: "${LOOKBACK_SECONDS:-5}"
       CLIP_DURATION_SECONDS: "${CLIP_DURATION_SECONDS:-12}"
       MISMATCH_TOLERANCE: "${MISMATCH_TOLERANCE:-0}"
@@ -22,13 +24,27 @@ services:
       REOLINK_HTTPS: "${REOLINK_HTTPS:-false}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
-      YOLO_MODEL: "${YOLO_MODEL:-yolov8n.pt}"
+      FTP_ENABLED: "${FTP_ENABLED:-false}"
+      FTP_HOST: "${FTP_HOST:-}"
+      FTP_PORT: "${FTP_PORT:-21}"
+      FTP_USER: "${FTP_USER:-}"
+      FTP_PASSWORD: "${FTP_PASSWORD:-}"
+      FTP_REMOTE_DIR: "${FTP_REMOTE_DIR:-/}"
+      FTP_PASSIVE: "${FTP_PASSIVE:-true}"
     volumes:
-      - guard-data:/data
       - ./data/pos:/data/pos
-      # Optional: mount local recordings
-      # - ./recordings:/data/recordings:ro
+      - ./data/clips:/data/clips
+      - ./data/videos:/data/videos
+      - ./data/recordings:/data/recordings
+      - ./data/uploads:/data/uploads
+      - ./data/preview:/data/preview
+      - ./data/models:/data/models
+      - guard-db:/data/db
+    # Docker Desktop (Windows/Mac) erreicht normalerweise das LAN (192.168.x).
+    # Falls die Kamera trotzdem nicht erreichbar ist, ggf. Firewall freigeben.
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
-  guard-data:
+  guard-db:

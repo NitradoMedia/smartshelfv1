@@ -1,0 +1,4 @@
+{
+  "name": "pos-video-guard",
+  "ports": [8088]
+}

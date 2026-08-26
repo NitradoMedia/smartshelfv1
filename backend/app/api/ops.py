@@ -88,12 +88,16 @@ async def upload_pos(file: UploadFile = File(...), db: AsyncSession = Depends(ge
 async def manual_reconcile(
     pos_file: UploadFile = File(..., description="Excel/CSV mit Bons"),
     videos: list[UploadFile] | None = File(None, description="Ein oder mehrere Videos"),
+    selected_videos: list[str] | None = Form(
+        None, description="Bereits gespeicherte Videos: 'recordings:name.mp4' oder 'videos:name.mp4'"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manueller Abgleich: Excel/CSV + Video(s) hochladen."""
+    """Manueller Abgleich: Excel/CSV + Upload und/oder gespeicherte Aufnahmen."""
     settings = get_settings()
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     settings.videos_dir.mkdir(parents=True, exist_ok=True)
+    settings.recordings_dir.mkdir(parents=True, exist_ok=True)
 
     pos_name = Path(pos_file.filename or "bons.xlsx").name
     pos_path = settings.uploads_dir / pos_name
@@ -107,6 +111,26 @@ async def manual_reconcile(
         vpath = settings.uploads_dir / vname
         vpath.write_bytes(await vid.read())
         video_paths.append(vpath)
+
+    for ref in selected_videos or []:
+        ref = (ref or "").strip()
+        if not ref:
+            continue
+        if ":" in ref:
+            source, fname = ref.split(":", 1)
+        else:
+            source, fname = "recordings", ref
+        fname = Path(fname).name
+        if source == "videos":
+            src = settings.videos_dir / fname
+        else:
+            src = settings.recordings_dir / fname
+        if not src.exists():
+            raise HTTPException(400, f"Video nicht gefunden: {ref}")
+        video_paths.append(src)
+
+    if not video_paths:
+        raise HTTPException(400, "Bitte mindestens ein Video hochladen oder eine Aufnahme auswählen")
 
     matcher = MatcherService(settings)
     try:

@@ -12,13 +12,18 @@ Abgleich von **Kassen-Transaktionen** mit **Reolink-Video** per KI. Bei Abweichu
 
 ## RTSP-Aufnahme
 
-Im Dashboard **Aufnahme**:
-1. RTSP-URL eintragen (z. B. `rtsp://admin:pass@192.168.1.120:554/h264Preview_01_main`)
-2. Optional Max-Dauer in Sekunden
-3. **Aufnahme starten** / **Stoppen**
-4. Dateien unter `data/recordings/` (und optional `data/videos/` für den Abgleich)
+**Wichtig:** Die Kamera (`192.168.x.x`) muss von dem Rechner erreichbar sein, auf dem die App läuft. Cloud-Agent + Port-Forward reicht für RTSP **nicht** – bitte lokal starten:
 
-Quellen werden gespeichert und können später wiedergewählt werden.
+```bash
+./scripts/run-local.sh
+# oder: docker compose up --build -d
+```
+
+Im Dashboard **Aufnahme**:
+1. RTSP-URL eintragen
+2. Optional Max-Dauer
+3. Start / Stop
+4. Fertige Datei unter **Manuell abgleichen** anhaken → mit Excel an KI schicken
 
 ## Videoquellen
 
@@ -31,6 +36,45 @@ Quellen werden gespeichert und können später wiedergewählt werden.
 
 Priorität bei `video_source=auto`: Upload-Ordner → FTP → Reolink → Demo.
 
+## Lokal mit Docker (empfohlen – gleiche LAN wie Kamera)
+
+**Auf deinem PC** (nicht im Cloud-Agent):
+
+### Windows
+1. Docker Desktop starten  
+2. Repo klonen / pullen  
+3. Doppelklick: `scripts\start-docker.bat`  
+   oder in PowerShell:
+```powershell
+cd smartshelfv1
+git checkout cursor/pos-video-guard-6e31
+git pull
+.\scripts\start-docker.bat
+```
+4. Browser: **http://localhost:8090**  
+   (nicht 8088 – das ist oft der Cursor-Cloud-Tunnel)
+
+### Linux / macOS
+```bash
+git checkout cursor/pos-video-guard-6e31
+git pull
+chmod +x scripts/start-docker.sh
+./scripts/start-docker.sh
+```
+
+In `.env` steht bereits beispielhaft:
+`REOLINK_RTSP_URL=rtsp://admin:admin@192.168.1.32:554/11`  
+Unter **Aufnahme** sollte die Netz-Diagnose dann **lokales Netz** + Kamera **OK** zeigen.
+
+Stoppen: `docker compose down`
+
+### Container „läuft“, Dashboard nicht?
+
+1. URL prüfen: **http://localhost:8090** (nicht 8088)  
+2. Diagnose: `scripts\docker-diagnose.bat` (zeigt Status + Logs)  
+3. Neu bauen: `docker compose down` → `scripts\start-docker.bat`  
+4. Branch: `cursor/pos-video-guard-6e31` (nicht nur ZIP von `main`)
+
 ## Schnellstart (Docker)
 
 ```bash
@@ -38,7 +82,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Dashboard: **http://localhost:8088**
+Dashboard: **http://localhost:8090**
 
 ### Lokal ohne Docker
 

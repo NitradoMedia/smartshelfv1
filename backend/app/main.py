@@ -6,9 +6,10 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import incidents, media, ops, record
+from app.api import incidents, media, network, ops, preview, record
 from app.config import get_settings
 from app.database import init_db
+from app.services.rtsp_preview import previews
 from app.services.rtsp_recorder import recorder
 from app.worker import start_scheduler, stop_scheduler
 
@@ -40,6 +41,7 @@ async def lifespan(_: FastAPI):
     )
     yield
     recorder.stop_all()
+    previews.stop_all()
     stop_scheduler()
 
 
@@ -48,6 +50,8 @@ app.include_router(incidents.router)
 app.include_router(ops.router)
 app.include_router(media.router)
 app.include_router(record.router)
+app.include_router(preview.router)
+app.include_router(network.router)
 
 STATIC = Path(__file__).resolve().parent.parent.parent / "frontend" / "static"
 # In Docker the frontend is copied next to app
