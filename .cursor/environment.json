@@ -1,0 +1,10 @@
+{
+  "name": "pos-video-guard",
+  "ports": [8088],
+  "terminals": [
+    {
+      "name": "pos-video-guard",
+      "command": "./scripts/run-local.sh"
+    }
+  ]
+}
