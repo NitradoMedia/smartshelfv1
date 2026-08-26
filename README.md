@@ -36,6 +36,37 @@ Im Dashboard **Aufnahme**:
 
 Priorität bei `video_source=auto`: Upload-Ordner → FTP → Reolink → Demo.
 
+## Lokal mit Docker (empfohlen – gleiche LAN wie Kamera)
+
+**Auf deinem PC** (nicht im Cloud-Agent):
+
+### Windows
+1. Docker Desktop starten  
+2. Repo klonen / pullen  
+3. Doppelklick: `scripts\start-docker.bat`  
+   oder in PowerShell:
+```powershell
+cd smartshelfv1
+git checkout cursor/pos-video-guard-6e31
+git pull
+.\scripts\start-docker.bat
+```
+4. Browser: **http://localhost:8088**
+
+### Linux / macOS
+```bash
+git checkout cursor/pos-video-guard-6e31
+git pull
+chmod +x scripts/start-docker.sh
+./scripts/start-docker.sh
+```
+
+In `.env` steht bereits beispielhaft:
+`REOLINK_RTSP_URL=rtsp://admin:admin@192.168.1.32:554/11`  
+Unter **Aufnahme** sollte die Netz-Diagnose dann **lokales Netz** + Kamera **OK** zeigen.
+
+Stoppen: `docker compose down`
+
 ## Schnellstart (Docker)
 
 ```bash
