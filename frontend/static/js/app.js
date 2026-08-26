@@ -545,12 +545,49 @@ async function refreshNetDiag() {
     box.className = "net-diag" + (d.tcp && d.tcp.ok ? " ok" : "");
     box.textContent =
       `Server: ${(d.local_ips || []).join(", ") || d.hostname}` +
-      `${d.looks_like_cloud ? " (Cloud – kein Heimnetz)" : " (lokales Netz)"}\n` +
+      ` (${d.env_label || (d.looks_like_cloud ? "kein Heimnetz" : "lokales Netz")})\n` +
       `Kamera ${d.rtsp_host || "?"}:${d.rtsp_port || 554} → ${tcp}\n\n` +
       (d.recommendation || "");
+    updateLanBanner(d);
   } catch (err) {
     box.className = "net-diag";
     box.textContent = err.message || "Netz-Diagnose fehlgeschlagen";
+  }
+}
+
+function updateLanBanner(d) {
+  const banner = document.getElementById("lan-banner");
+  if (!banner) return;
+  if (d && d.needs_local_restart) {
+    banner.classList.remove("hidden");
+    banner.innerHTML =
+      "<strong>Kamera nicht erreichbar – App läuft nicht in deinem Heimnetz.</strong>\n" +
+      "Cursor-Cloud-Tunnel ≠ lokaler PC. Auf dem Windows-PC:\n" +
+      "scripts\\start-docker.bat → dann <strong>http://localhost:8090</strong> öffnen " +
+      "(nicht 8088). Diagnose muss „Kamera → OK“ zeigen.";
+  } else if (d && d.tcp && d.tcp.ok) {
+    banner.classList.add("hidden");
+    banner.textContent = "";
+  } else if (d && d.looks_like_cloud) {
+    banner.classList.remove("hidden");
+    banner.innerHTML =
+      "<strong>Hinweis:</strong> Keine Heimnetz-IP erkannt. Für die Reolink lokal starten: " +
+      "<strong>http://localhost:8090</strong> nach scripts\\start-docker.bat";
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+async function checkLanOnLoad() {
+  try {
+    const d = await api("/api/network/diagnose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "rtsp://admin:admin@192.168.1.32:554/11" }),
+    });
+    updateLanBanner(d);
+  } catch (_) {
+    /* ignore */
   }
 }
 
@@ -596,7 +633,7 @@ document.getElementById("form-record").addEventListener("submit", async (e) => {
   }
 });
 
-Promise.all([loadStats(), loadIncidents()]).catch(console.error);
+Promise.all([loadStats(), loadIncidents(), checkLanOnLoad()]).catch(console.error);
 setInterval(() => {
   loadStats();
   loadIncidents();
